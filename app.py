@@ -45,37 +45,6 @@ CRS_LATLON_EPSG = 4326
 
 _transformer_cache = {}
 
-# ... (all your imports and Flask app setup) ...
-# ... (Flask-Limiter, Cache setup) ...
-
-# ---> MOVE LOGGING CONFIGURATION HERE <---
-import logging
-logging.basicConfig(level=logging.INFO) # Or logging.DEBUG for more verbosity in dev/staging
-# This initial log message will appear when Gunicorn starts the app
-app.logger.info(f"Application starting... Default TARGET_CRS_EPSG: {DEFAULT_TARGET_CRS_EPSG}")
-app.logger.info(f"Flask-Limiter is active with in-memory storage: {limiter.storage_uri}")
-app.logger.info(f"Flask-Cache type: {app.config.get('CACHE_TYPE')}")
-
-
-try:
-    _, _, err = get_transformers(str(DEFAULT_TARGET_CRS_EPSG))
-    if err:
-         app.logger.critical(f"Default PyProj transformer (EPSG:{DEFAULT_TARGET_CRS_EPSG}) failed to initialize on app startup: {err}")
-         # You might even raise an exception here if it's a showstopper
-    else:
-        app.logger.info(f"Default PyProj transformer (EPSG:{DEFAULT_TARGET_CRS_EPSG}) check successful.")
-
-    # Check for RIZAL_CSV_PATH (load_reference_points will handle errors when called)
-    if not os.path.exists(RIZAL_CSV_PATH):
-        app.logger.critical(f"CRITICAL: Reference CSV '{RIZAL_CSV_PATH}' does not exist. Application might not function correctly.")
-    else:
-        app.logger.info(f"Reference CSV '{RIZAL_CSV_PATH}' found.")
-
-except Exception as e:
-    app.logger.critical(f"Critical error during application startup initialization: {e}", exc_info=True)
-
-
-
 def get_transformers(target_crs_epsg_str):
     try:
         target_crs_epsg = int(target_crs_epsg_str)
