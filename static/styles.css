@@ -1,0 +1,862 @@
+/* --- CSS Reset & Variables --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    background-color: #f4f7fc;
+    color: #333d48;
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+}
+
+ul {
+    padding-inline-start: 0px;
+}
+
+:root {
+    --primary-color: #4a90e2;
+    --primary-hover-color: #357ABD;
+    --secondary-color: #7f8c8d;
+    --success-color: #2ecc71;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+    --info-color: #3498db;
+    --light-bg: #ffffff;
+    --medium-bg: #f9fbfd;
+    --dark-bg-editor: #3e4a59;
+    --text-color-light: #f0f4f8;
+    --text-color: #333d48;
+    --border-color: #e1e5eb;
+    --border-radius: 6px;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --box-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --box-shadow-strong: 0 6px 18px rgba(0, 0, 0, 0.12);
+    /* For floating panel */
+    --text-muted: #6c757d;
+}
+
+/* --- App Layout --- */
+.app-header {
+    background-color: var(--light-bg);
+    padding: 0.8rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--box-shadow-sm);
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.app-header h1 {
+    color: var(--primary-color);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.disclaimer {
+    position: relative;
+    padding: 0.6rem 2.5rem 0.6rem 1rem;
+    margin: 0.75rem auto;
+    background-color: #fff9e0;
+    color: #7a641d;
+    border: 1px solid #ffecb3;
+    border-radius: var(--border-radius);
+    font-size: 0.8rem;
+    max-width: 90%;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.disclaimer-close {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #7a641d;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    opacity: 0.7;
+}
+
+.disclaimer-close:hover {
+    opacity: 1;
+}
+
+.app-main-container {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+    margin: 0 1rem 1rem 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    background-color: var(--light-bg);
+    min-height: 0;
+}
+
+.sidebar {
+    width: 340px;
+    flex-shrink: 0;
+    background-color: var(--medium-bg);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border-right: 1px solid var(--border-color);
+    min-height: 0;
+}
+
+.main-content-area {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.sidebar-section h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* --- Map --- */
+.map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#map {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+    background-color: #e9ecef;
+}
+
+/* --- Floating Lot Editor --- */
+.active-lot-editor-container {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    width: 430px;
+    max-width: calc(100% - 2rem);
+    max-height: calc(100% - 2rem);
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow-strong);
+    z-index: 1050;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* This container clips children if they exceed max-height */
+    transition: all 0.3s ease-in-out;
+}
+
+.active-lot-editor-container.placeholder {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: auto;
+    max-width: 90%;
+    min-width: 280px;
+    padding: 1.5rem;
+    color: var(--secondary-color);
+    font-style: italic;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.active-lot-editor-container .lot-editor-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+}
+
+.btn-toggle-editor {
+    padding: 0.2rem 0.5rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    line-height: 1;
+    background-color: transparent;
+    color: var(--secondary-color);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    order: -1;
+}
+
+.btn-toggle-editor:hover {
+    background-color: #e9ecef;
+    border-color: var(--border-color);
+}
+
+.active-lot-editor-container.editor-minimized {
+    width: auto;
+    height: auto;
+    padding: 0.5rem;
+    overflow: hidden;
+    max-height: none;
+}
+
+.active-lot-editor-container.editor-minimized .lot-editor-header {
+    margin-bottom: 0;
+}
+
+.active-lot-editor-container.editor-minimized .lot-editor-header label,
+.active-lot-editor-container.editor-minimized .lot-editor-header input[type="text"].lot-name-input,
+.active-lot-editor-container.editor-minimized .survey-point-editor,
+.active-lot-editor-container.editor-minimized .btn-add-point-to-lot {
+    display: none;
+}
+
+/* .survey-point-editor when inside .active-lot-editor-container */
+.active-lot-editor-container .survey-point-editor {
+    flex: 1 1 0;
+    /* MODIFIED: Grow:1, Shrink:1, Basis:0px - allows it to take available space and shrink */
+    min-height: 1;
+    /* MODIFIED: CRITICAL for flex item to shrink below its content size for scrolling */
+    transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
+    /* Other styles like overflow, background, padding come from the general .survey-point-editor rule */
+}
+
+.active-lot-editor-container .btn-add-point-to-lot {
+    margin: 0.8rem auto 0 auto;
+    flex-shrink: 0;
+}
+
+/* General styles for ANY survey-point-editor area */
+.survey-point-editor {
+    background-color: var(--dark-bg-editor);
+    color: var(--text-color-light);
+    padding: 0.8rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: auto;
+    /* This element will scroll its content */
+    overflow-x: hidden;
+    min-height: 150px; /* ADDED: Default minimum height for the editor area */
+}
+
+/* --- Form Elements & Controls --- */
+.input-group {
+    margin-bottom: 0.9rem;
+}
+
+.input-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #555;
+    display: block;
+}
+
+select.crs-select,
+.select2-container--default .select2-selection--single,
+input[type="text"].lot-name-input {
+    width: 100%;
+    height: 36px !important;
+    font-size: 0.875rem;
+    border: 1px solid #cbd5e0;
+    border-radius: var(--border-radius);
+    padding: 0.3rem 0.6rem;
+    background-color: #fff;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+select.crs-select:focus,
+input[type="text"].lot-name-input:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+}
+
+.select2-container--default .select2-selection--single {
+    padding: 0;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: calc(36px - 2px) !important;
+    padding-left: 0.6rem !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: calc(36px - 2px) !important;
+}
+
+.global-settings small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 0.2rem;
+}
+
+/* --- Lot Navigator --- */
+.lot-navigator ul {
+    margin-top: 0.25rem;
+    list-style: none;
+}
+
+.lot-navigator li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius);
+    margin-bottom: 0.3rem;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    font-size: 0.875rem;
+}
+
+.lot-navigator li:hover {
+    background-color: #e7f0fa;
+    color: var(--primary-color);
+}
+
+.lot-navigator li.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+}
+
+.lot-navigator li.active .btn-remove-lot-list {
+    color: white;
+    opacity: 0.75;
+}
+
+.lot-navigator li.active .btn-remove-lot-list:hover {
+    opacity: 1;
+}
+
+.lot-navigator .lot-name-display {
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 0.5rem;
+}
+
+.lot-navigator .btn-remove-lot-list {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 0.2rem;
+    line-height: 1;
+    opacity: 0.6;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+.lot-navigator .btn-remove-lot-list:hover {
+    opacity: 1;
+}
+
+/* --- Buttons --- */
+.btn {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: all 0.15s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover-color);
+    border-color: var(--primary-hover-color);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+.btn-success:hover {
+    background-color: #25a25a;
+    border-color: #25a25a;
+}
+
+#addLotBtnSidebar {
+    margin-top: 0.8rem;
+}
+
+/* --- Lot Editor Specific Inputs and Table --- */
+.active-lot-editor-container .lot-editor-header label {
+    margin-right: 0.5rem;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.active-lot-editor-container .lot-editor-header input[type="text"].lot-name-input {
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+.survey-point-editor h3 {
+    font-size: 0.9rem;
+    color: #e0e5ea;
+    padding-bottom: 0.5rem;
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid #556270;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.survey-point-table-content {
+    /* Takes full width of .survey-point-editor. Does not scroll itself. */
+}
+
+.survey-point-editor .point-headers {
+    color: #a8b5c4;
+    font-size: 0.75rem;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.6rem;
+    display: flex;
+}
+
+.survey-point-editor .survey-point-row {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    padding: 0.15rem 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Column Definitions - Allow shrinking */
+.point-headers>span,
+.survey-point-row>* {
+    margin-right: 5px;
+    box-sizing: border-box;
+}
+
+.point-headers>span:last-child,
+.survey-point-row>*:last-child {
+    margin-right: 0;
+}
+
+.header-label,
+.point-label {
+    flex: 1 1 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.header-ns,
+.point-ns {
+    flex: 0 1 45px;
+}
+
+.header-deg,
+.point-deg {
+    flex: 0 1 50px;
+}
+
+.header-min,
+.point-min {
+    flex: 0 1 50px;
+}
+
+.header-ew,
+.point-ew {
+    flex: 0 1 45px;
+}
+
+.header-dist,
+.point-dist {
+    flex: 1 1 70px;
+}
+
+.header-action,
+.survey-point-row .btn-remove-point-container {
+    flex: 0 0 30px;
+    text-align: center;
+}
+
+.survey-point-editor .survey-point-row input,
+.survey-point-editor .survey-point-row select {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.3rem;
+    background-color: #4b5766;
+    border: 1px solid #5f6c7b;
+    color: var(--text-color-light);
+    border-radius: 4px;
+    width: 100%;
+    min-width: 0;
+}
+
+.survey-point-editor .survey-point-row input:focus,
+.survey-point-editor .survey-point-row select:focus {
+    background-color: #525e6c;
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.survey-point-editor .btn-remove-point {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.9rem;
+    background-color: var(--danger-color);
+    border-radius: 4px;
+    color: white;
+    border: none;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.survey-point-editor .btn-remove-point:hover {
+    background-color: #c9302c;
+}
+
+.survey-point-editor .point-label {
+    font-weight: 500;
+}
+
+/* --- Export Buttons --- */
+.export-buttons-section {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.export-buttons-section h3 {
+    font-size: 1rem;
+    margin-top: 0;
+    margin-bottom: 0.6rem;
+    color: var(--primary-color);
+}
+
+.btn-export {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    padding: 0.55rem;
+    font-size: 0.875rem;
+}
+
+button#exportDxfBtn.btn-export {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: white;
+}
+
+button#exportDxfBtn.btn-export:hover {
+    background-color: #5a32a3;
+    border-color: #5a32a3;
+}
+
+button#exportGeoJsonBtn.btn-export {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    color: white;
+}
+
+button#exportGeoJsonBtn.btn-export:hover {
+    background-color: #004494;
+    border-color: #004494;
+}
+
+button#exportShapefileBtn.btn-export {
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+    color: white;
+}
+
+button#exportShapefileBtn.btn-export:hover {
+    background-color: #288ba0;
+    border-color: #288ba0;
+}
+
+button#exportKmzBtn.btn-export {
+    background-color: var(--warning-color);
+    border-color: var(--warning-color);
+    color: var(--text-color);
+}
+
+button#exportKmzBtn.btn-export:hover {
+    background-color: #e99002;
+    border-color: #e99002;
+}
+
+/* --- Messages --- */
+.message-area {
+    margin-bottom: 1rem;
+}
+
+.message {
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.85rem;
+}
+
+.message.error {
+    background-color: #fddfe2;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background-color: #fff9e0;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.message.info {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 1100px) {
+    .app-main-container {
+        flex-direction: column;
+        overflow-y: auto;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        overflow-y: visible;
+        flex-shrink: 0;
+    }
+
+    .main-content-area {
+        flex-grow: 1;
+        min-height: 300px;
+    }
+
+    .active-lot-editor-container {
+        top: 0.5rem;
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+        max-width: none;
+        max-height: 60vh;
+        /* Overall height limit for the floating panel */
+        padding: 0.8rem;
+    }
+
+    .active-lot-editor-container.placeholder {
+        max-width: calc(100% - 1rem);
+        padding: 1rem;
+    }
+
+    .active-lot-editor-container.editor-minimized {
+        padding: 0.5rem;
+    }
+        /* ADD THIS NEW RULE: */
+    .active-lot-editor-container.editor-minimized {
+        right: auto; /* Unset 'right' or set to 'auto' to allow shrinking from the right. */
+                     /* 'width: auto;' from the general .editor-minimized rule will then ensure shrink-to-fit. */
+                     /* Padding will be correctly applied from other .editor-minimized rules. */
+    }
+
+    .active-lot-editor-container.placeholder {
+        max-width: calc(100% - 1rem);
+        padding: 1rem;
+    }
+}
+
+
+@media (max-width: 767px) {
+    body {
+        font-size: 13px;
+    }
+
+    .app-header h1 {
+        font-size: 1.15rem;
+    }
+
+    .sidebar {
+        padding: 0.8rem;
+    }
+
+    .active-lot-editor-container {
+        padding: 0.6rem;
+        max-height: 55vh;
+        /* Overall height limit for the floating panel */
+    }
+
+    .active-lot-editor-container.placeholder {
+        padding: 0.8rem;
+    }
+
+    .active-lot-editor-container.editor-minimized {
+        padding: 0.4rem;
+    }
+
+    .active-lot-editor-container .lot-editor-header label,
+    .active-lot-editor-container .lot-editor-header input[type="text"].lot-name-input {
+        font-size: 0.8rem;
+    }
+
+    .survey-point-editor h3 {
+        font-size: 0.85rem;
+    }
+
+    .survey-point-editor {
+        /* This general selector will apply to .active-lot-editor-container .survey-point-editor too */
+        min-height: 120px; /* MODIFIED: Increased visual minimum height */
+    }
+
+
+    .sidebar-section h2,
+    .export-buttons-section h3 {
+        font-size: 0.95rem;
+    }
+
+    .input-group label,
+    select.crs-select,
+    .select2-container--default .select2-selection--single,
+    input[type="text"].lot-name-input {
+        font-size: 0.8rem;
+    }
+
+    select.crs-select,
+    .select2-container--default .select2-selection--single {
+        height: 34px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: calc(34px - 2px) !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: calc(34px - 2px) !important;
+    }
+
+    .lot-navigator .lot-name-display,
+    #addLotBtnSidebar.btn,
+    .btn-export {
+        font-size: 0.825rem;
+        padding: 0.45rem 0.8rem;
+    }
+
+    .survey-point-editor .point-headers,
+    .survey-point-editor .survey-point-row {
+        font-size: 0.75rem;
+    }
+
+    .survey-point-editor .survey-point-row input,
+    .survey-point-editor .survey-point-row select {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .active-lot-editor-container {
+        top: 0.25rem;
+        left: 0.25rem;
+        right: 0.25rem;
+        padding: 0.5rem;
+        max-height: 50vh;
+        /* Overall height limit for the floating panel */
+    }
+
+    .active-lot-editor-container.editor-minimized {
+        padding: 0.3rem;
+    }
+
+    .survey-point-editor {
+        /* This general selector will apply here too */
+        min-height: 100px; /* MODIFIED: Increased visual minimum height for very small screens */
+    }
+
+    .point-headers>span,
+    .survey-point-row>* {
+        margin-right: 3px;
+    }
+
+    .header-label,
+    .point-label {
+        flex-basis: 40px;
+        font-size: 0.7rem;
+    }
+
+    .header-ns,
+    .point-ns,
+    .header-ew,
+    .point-ew {
+        flex-basis: 35px;
+    }
+
+    .header-deg,
+    .point-deg,
+    .header-min,
+    .point-min {
+        flex-basis: 35px;
+    }
+
+    .header-dist,
+    .point-dist {
+        flex-basis: 50px;
+    }
+
+    .header-action,
+    .survey-point-row .btn-remove-point-container {
+        flex-basis: 25px;
+    }
+
+    .survey-point-editor .survey-point-row input,
+    .survey-point-editor .survey-point-row select {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.1rem;
+    }
+}
