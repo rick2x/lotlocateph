@@ -38,6 +38,13 @@ config = {
 app.config.from_mapping(config)
 cache = Cache(app)
 
+RIZAL_CSV_PATH = os.path.join(app.root_path, 'rizal.csv')
+
+DEFAULT_TARGET_CRS_EPSG = 25393
+CRS_LATLON_EPSG = 4326
+
+_transformer_cache = {}
+
 # ... (all your imports and Flask app setup) ...
 # ... (Flask-Limiter, Cache setup) ...
 
@@ -68,13 +75,6 @@ except Exception as e:
     app.logger.critical(f"Critical error during application startup initialization: {e}", exc_info=True)
 
 
-
-RIZAL_CSV_PATH = os.path.join(app.root_path, 'rizal.csv')
-
-DEFAULT_TARGET_CRS_EPSG = 25393
-CRS_LATLON_EPSG = 4326
-
-_transformer_cache = {}
 
 def get_transformers(target_crs_epsg_str):
     try:
