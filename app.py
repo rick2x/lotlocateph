@@ -6,7 +6,6 @@ from ezdxf.enums import TextEntityAlignment
 from pyproj import CRS, Transformer, Proj
 from pyproj.exceptions import CRSError
 from shapely.geometry import Point, LineString, Polygon
-from dotenv import load_dotenv
 import ezdxf
 import pandas as pd
 import io
@@ -19,11 +18,10 @@ import zipfile
 import tempfile
 import simplekml
 
-load_dotenv()
 
 app = Flask(__name__)
-SECRET_KEY = os.getenv("FLASK_SECRET_KEY")
-app.secret_key = SECRET_KEY
+app.secret_key = 'your_very_secret_key_rizal_encoder_v13_csv_cache'
+
 limiter = Limiter(
     get_remote_address, # Key by remote IP address
     app=app,
