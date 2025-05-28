@@ -28,6 +28,7 @@ $(document).ready(function () {
 
     let plottedFeatureGroups = {};
     let mainReferenceMarker = null;
+    let currentModifiedMainRefEN = null; // Stores { easting: <value>, northing: <value> } for dragged ref point
     let debounceTimeout;
     let messageFadeTimeoutId = null;
 
@@ -90,7 +91,10 @@ $(document).ready(function () {
             dropdownAutoWidth: true,
             width: '100%',
             theme: "default"
-        }).on('change', triggerMapUpdateWithDebounce);
+        }).on('change', function() { // Modified to a full function to include reset
+            currentModifiedMainRefEN = null; // Reset modified coordinates on dropdown change
+            triggerMapUpdateWithDebounce();
+        });
     }
 
     $('#target_crs_select').on('change', function() {
@@ -676,11 +680,24 @@ $(document).ready(function () {
 
     function getPayloadForServer() {
         persistActiveLotData(); // Ensure latest data is captured
-        return {
+        const payload = {
             target_crs_select: $('#target_crs_select').val(),
             reference_point_select: $('#reference_point_select').val(),
             lots: getLotsForPayload()
         };
+
+        if (currentModifiedMainRefEN && currentModifiedMainRefEN.easting !== undefined && currentModifiedMainRefEN.northing !== undefined) {
+            payload.main_ref_e = currentModifiedMainRefEN.easting;
+            payload.main_ref_n = currentModifiedMainRefEN.northing;
+            // If modified E/N are sent, the server should ideally ignore 'reference_point_select' for coordinates
+            // or this client-side logic should ensure 'reference_point_select' is not used by the server
+            // for coordinate lookup if these are provided. For now, we send both.
+            // The backend currently uses selected_display_name to find the point details,
+            // then extracts E/N from it. If main_ref_e/n are in payload, it should use them.
+            // This needs coordination with backend logic if not already handled.
+            // For this task, we just add them to the payload.
+        }
+        return payload;
     }
 
     function fetchAndPlotMapData() {
@@ -819,8 +836,61 @@ $(document).ready(function () {
         if (referencePlotData && referencePlotData.reference_marker_latlng) {
             mainReferenceMarker = L.marker(
                 referencePlotData.reference_marker_latlng, 
-                { title: "Reference Point" }
-            ).bindPopup("Reference Point");
+                { 
+                    title: "Reference Point (Drag to modify)", // Updated title
+                    draggable: true // Ensure marker is draggable
+                }
+            ).bindPopup("Reference Point (Drag to modify location)");
+            
+            mainReferenceMarker.on('dragend', function(event) {
+                const newLatLng = event.target.getLatLng();
+                const targetCrs = $('#target_crs_select').val();
+
+                if (!targetCrs) {
+                    displayMessage('error', 'Target CRS not selected. Cannot transform coordinates.');
+                    // Optionally, revert marker position here if you store its original position
+                    // For now, we leave it where the user dragged it.
+                    return;
+                }
+
+                showLoading('Transforming reference point...');
+                fetch('/api/transform_to_projected', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        latitude: newLatLng.lat,
+                        longitude: newLatLng.lng,
+                        target_crs_epsg: targetCrs
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        currentModifiedMainRefEN = { easting: result.easting, northing: result.northing };
+                        displayMessage('info', `Reference point E/N updated to: ${result.easting.toFixed(3)}, ${result.northing.toFixed(3)}. Recalculating lots...`);
+                        // Clear the reference_point_select dropdown's text but not its value
+                        // to indicate that the coordinates are now custom.
+                        // This is tricky with select2. A visual cue might be better.
+                        // For now, we rely on currentModifiedMainRefEN to override.
+                        // $('#reference_point_select').val(null).trigger('change.select2'); // This would clear selection
+                        fetchAndPlotMapData(); // This will use the new currentModifiedMainRefEN
+                    } else {
+                        currentModifiedMainRefEN = null;
+                        displayMessage('error', `Failed to transform reference point: ${result.message}`);
+                        // Optionally revert marker position
+                        // event.target.setLatLng(originalLatLngBeforeDrag); // Needs originalLatLngBeforeDrag
+                    }
+                })
+                .catch(error => {
+                    currentModifiedMainRefEN = null;
+                    console.error('Transform API Error:', error);
+                    displayMessage('error', 'Failed to transform reference point coordinates due to a network or server error.');
+                    // Optionally revert marker position
+                })
+                .finally(() => {
+                    hideLoading();
+                });
+            });
             mainReferenceMarker.addTo(map);
             allLatLngsForBounds.push(referencePlotData.reference_marker_latlng);
         }

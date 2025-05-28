@@ -22,8 +22,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import geopandas as gpd
 import pandas as pd
-from pyproj import CRS, Transformer
-from pyproj.exceptions import CRSError
+from pyproj import CRS, Transformer # CRS, Transformer were already here
+from pyproj.exceptions import CRSError # CRSError was already here
 from shapely.geometry import Point, LineString, Polygon
 import simplekml
 
@@ -431,6 +431,84 @@ def index():
     )
 
 
+@app.route('/api/transform_to_projected', methods=['POST'])
+@limiter.limit("60 per minute;500 per day") # Standard limit for API utilities
+def transform_to_projected_endpoint():
+    """
+    Transforms geographic coordinates (Latitude, Longitude) from WGS84 (EPSG:4326)
+    to a specified target projected Coordinate Reference System (CRS).
+    Expects JSON: {"latitude": float, "longitude": float, "target_crs_epsg": str}
+    Returns JSON: {"status": "success/error", "easting": float, "northing": float} or {"message": str}
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "No JSON data provided."}), 400
+
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    target_crs_epsg = data.get('target_crs_epsg')
+
+    if latitude is None or longitude is None or target_crs_epsg is None:
+        missing_params = []
+        if latitude is None: missing_params.append("latitude")
+        if longitude is None: missing_params.append("longitude")
+        if target_crs_epsg is None: missing_params.append("target_crs_epsg")
+        return jsonify({
+            "status": "error",
+            "message": f"Missing required parameters: {', '.join(missing_params)}"
+        }), 400
+
+    if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
+        return jsonify({
+            "status": "error",
+            "message": "Latitude and Longitude must be numeric values."
+        }), 400
+    
+    if not isinstance(target_crs_epsg, str):
+         return jsonify({
+            "status": "error",
+            "message": "Target CRS EPSG must be a string (e.g., '32651')."
+        }), 400
+
+    source_crs_epsg = 4326  # WGS84
+
+    try:
+        # pyproj expects (longitude, latitude) for geographic CRS when always_xy=True
+        # and returns (easting, northing) for projected CRS.
+        transformer = Transformer.from_crs(
+            f"EPSG:{source_crs_epsg}", 
+            f"EPSG:{target_crs_epsg}", 
+            always_xy=True # Ensures Lon,Lat input order for geographic, E,N output for projected
+        )
+        easting, northing = transformer.transform(longitude, latitude) # Input order: Lon, Lat
+
+        return jsonify({
+            "status": "success",
+            "easting": easting,
+            "northing": northing
+        }), 200
+
+    except CRSError:
+        current_app.logger.error(
+            f"CRSError for target_crs_epsg '{target_crs_epsg}' in "
+            f"/api/transform_to_projected. Lat: {latitude}, Lon: {longitude}"
+        )
+        return jsonify({
+            "status": "error",
+            "message": f"Invalid target CRS provided: EPSG:{target_crs_epsg}. Please check the EPSG code."
+        }), 400
+    except Exception as e:
+        current_app.logger.error(
+            f"Transformation failed in /api/transform_to_projected for "
+            f"target_crs_epsg '{target_crs_epsg}'. Lat: {latitude}, Lon: {longitude}. Error: {str(e)}",
+            exc_info=True 
+        )
+        return jsonify({
+            "status": "error",
+            "message": "Coordinate transformation failed due to a server error."
+        }), 500
+
+
 @app.route('/calculate_plot_data_multi', methods=['POST'])
 @limiter.limit("30 per minute;100 per hour")
 def calculate_plot_data_multi_endpoint():
@@ -450,6 +528,28 @@ def calculate_plot_data_multi_endpoint():
     selected_display_name = data.get('reference_point_select')
     lots_data_from_payload = data.get('lots', [])
 
+    # --- Determine Main Reference Coordinates ---
+    main_ref_e_client = data.get('main_ref_e')
+    main_ref_n_client = data.get('main_ref_n')
+    main_ref_e = None
+    main_ref_n = None
+    using_client_ref_coords = False
+
+    if main_ref_e_client is not None and main_ref_n_client is not None:
+        try:
+            main_ref_e = float(main_ref_e_client)
+            main_ref_n = float(main_ref_n_client)
+            using_client_ref_coords = True
+            current_app.logger.info(f"Using client-provided reference coordinates: E {main_ref_e}, N {main_ref_n}")
+        except ValueError:
+            current_app.logger.warning(
+                f"Could not parse client-provided main_ref_e ('{main_ref_e_client}') or "
+                f"main_ref_n ('{main_ref_n_client}') as float. Falling back to selected reference point name."
+            )
+            main_ref_e = None # Ensure fallback
+            main_ref_n = None # Ensure fallback
+            using_client_ref_coords = False # Explicitly set for clarity
+
     transformer_to_latlon, _, err_msg_transformer = get_transformers(
         target_crs_epsg_str
     )
@@ -465,47 +565,63 @@ def calculate_plot_data_multi_endpoint():
             "status": "error", "message": f"Reference point data error: {csv_err_msg}"
         }), 500
 
-    if not selected_display_name:
-        if not lots_data_from_payload:  # No ref point, no lots
+    if not using_client_ref_coords:
+        if selected_display_name:
+            selected_point_details = next(
+                (p for p in ref_pts_list if p['display_name'] == selected_display_name),
+                None
+            )
+            if not selected_point_details:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Selected reference point '{selected_display_name}' not found."
+                }), 400
+            try:
+                main_ref_e = float(selected_point_details['EASTINGS'])
+                main_ref_n = float(selected_point_details['NORTHINGS'])
+                current_app.logger.info(f"Using reference coordinates from selected point '{selected_display_name}': E {main_ref_e}, N {main_ref_n}")
+            except ValueError:
+                # This error means the CSV data for the selected point is bad.
+                return jsonify({
+                    "status": "error",
+                    "message": f"Invalid coordinates for the selected main reference point '{selected_display_name}' in the reference data."
+                }), 400
+        # If not using_client_ref_coords AND no selected_display_name, 
+        # main_ref_e/n will remain None. This is handled below.
+
+    # Check if reference coordinates are established if lot data is present
+    # This check is crucial if lots_data_from_payload has items that contain actual survey lines.
+    has_lines_in_payload = any(lot.get('lines_text', '').strip() for lot in lots_data_from_payload)
+
+    if main_ref_e is None or main_ref_n is None:
+        if not lots_data_from_payload or not has_lines_in_payload: 
+            # Case 1: No ref point (neither client nor selected) AND no lots (or lots without lines)
             return jsonify({
                 "status": "success", "data_per_lot": [],
                 "reference_plot_data": {"reference_marker_latlng": None}
             })
-        # No ref point, but lots are present - this is an error for calculation
-        return jsonify({
-            "status": "error",
-            "message": "Please select a reference point when lot data is present."
-        }), 400
-    
-    selected_point_details = next(
-        (p for p in ref_pts_list if p['display_name'] == selected_display_name),
-        None
-    )
-    if not selected_point_details:
-        return jsonify({
-            "status": "error",
-            "message": f"Selected reference point '{selected_display_name}' not found."
-        }), 400
-    
-    try:
-        main_ref_e = float(selected_point_details['EASTINGS'])
-        main_ref_n = float(selected_point_details['NORTHINGS'])
-    except ValueError:
-        return jsonify({
-            "status": "error",
-            "message": "Invalid coordinates for the selected main reference point."
-        }), 400
+        else:
+            # Case 2: No ref point (neither client nor selected) BUT lots with lines are present
+            return jsonify({
+                "status": "error",
+                "message": "A valid reference point (either selected or manually placed/dragged) is required to process lot data."
+            }), 400
+
+    # At this point, main_ref_e and main_ref_n should be valid floats if lots are to be processed.
+    # Or, if no lots with lines are present, main_ref_e/n might still be None, but that's fine if only a ref point is plotted.
 
     reference_plot_data = {"reference_marker_latlng": None}
     if transformer_to_latlon and main_ref_e is not None and main_ref_n is not None:
         try:
+            # Transform the determined main_ref_e, main_ref_n to Lat/Lon for map display
             ref_lon, ref_lat = transformer_to_latlon.transform(main_ref_e, main_ref_n)
             reference_plot_data["reference_marker_latlng"] = [ref_lat, ref_lon]
         except Exception as e:
             current_app.logger.error(
-                f"Error transforming main ref point to Lat/Lon for plotting: {str(e)}",
+                f"Error transforming main ref point (E:{main_ref_e}, N:{main_ref_n}) to Lat/Lon for plotting: {str(e)}",
                 exc_info=True
             )
+            # If transformation fails, reference_marker_latlng remains None, map won't show it.
 
     results_per_lot = []
     any_lot_had_error = False
@@ -516,44 +632,62 @@ def calculate_plot_data_multi_endpoint():
         # For now, treating as empty list of lots.
         lots_data_from_payload = []
 
-    if not lots_data_from_payload: 
+    if not lots_data_from_payload and (main_ref_e is None or main_ref_n is None): # No lots and no ref point at all
+         return jsonify({"status": "success", "data_per_lot": [], "reference_plot_data": reference_plot_data}) # Should be caught by earlier check
+    elif not lots_data_from_payload and main_ref_e is not None and main_ref_n is not None: # No lots, but a ref point is available (selected or client)
          return jsonify({"status": "success", "data_per_lot": [], "reference_plot_data": reference_plot_data})
 
+
+    # If we have lots to process, main_ref_e and main_ref_n MUST be valid by now.
+    # The check "if main_ref_e is None or main_ref_n is None:" and has_lines_in_payload
+    # should have already returned an error if they weren't.
+
     for index, lot_input in enumerate(lots_data_from_payload):
+        # Skip processing for lots that don't have line data, but include them in results if they have a name/id
+        # to maintain consistency with the frontend's expectation of receiving all lots back.
+        lines_text = lot_input.get('lines_text', "")
+        lot_id = lot_input.get('id', f"unknown_id_{index}")
+        lot_name = lot_input.get('name', f"Unnamed Lot {index+1}")
+
         if not isinstance(lot_input, dict):
             current_app.logger.warning(f"Skipping malformed lot entry at index {index}: not a dictionary. Entry: {lot_input}")
             results_per_lot.append({
-                "lot_id": f"malformed_lot_{index}",
-                "lot_name": f"Malformed Lot {index+1}",
+                "lot_id": lot_id, # Use extracted or default ID
+                "lot_name": lot_name, # Use extracted or default Name
                 "status": "error",
                 "message": "Lot data is not structured correctly (must be a dictionary)."
             })
             any_lot_had_error = True
             continue
-
-        lot_id = lot_input.get('id')
-        if lot_id is None:
-            lot_id = f"missing_id_{index}"
-            current_app.logger.warning(f"Lot entry at index {index} is missing 'id'. Using default: '{lot_id}'.")
-
-        lot_name = lot_input.get('name')
-        if lot_name is None:
-            lot_name = f"Unnamed Lot {index+1}"
-            current_app.logger.warning(f"Lot entry '{lot_id}' is missing 'name'. Using default: '{lot_name}'.")
         
-        lines_text = lot_input.get('lines_text')
-        if not isinstance(lines_text, str):
-            current_app.logger.warning(f"Skipping lot '{lot_id}' ({lot_name}): 'lines_text' is missing or not a string. Entry: {lot_input}")
+        # Ensure lot_id and lot_name are properly assigned even if structure is bad.
+        # Already done above before the isinstance check.
+
+        if not isinstance(lines_text, str) or not lines_text.strip(): # Check if lines_text is empty or not a string
+            # If lines_text is empty or invalid, we still want to return this lot in the results
+            # so the frontend can see it, but mark it as 'nodata' or 'error' as appropriate.
+            # If it's just empty, 'nodata' is suitable. If it's not a string, 'error'.
+            status_for_empty_lot = "nodata"
+            message_for_empty_lot = "Lot has no survey lines to process."
+            if not isinstance(lines_text, str):
+                status_for_empty_lot = "error"
+                message_for_empty_lot = "Lot survey lines ('lines_text') are invalid (not a string)."
+                any_lot_had_error = True # Treat invalid type as an error for overall status
+
             results_per_lot.append({
                 "lot_id": lot_id,
                 "lot_name": lot_name,
-                "status": "error",
-                "message": "Lot survey lines ('lines_text') are missing or invalid."
+                "status": status_for_empty_lot,
+                "message": message_for_empty_lot,
+                "plot_data": {}, # No plot data
+                "misclosure_raw": {"distance_raw": None, "azimuth_raw_deg": None},
+                "area_sqm_raw": None
             })
-            any_lot_had_error = True
+            # Do not set any_lot_had_error = True for 'nodata' unless it's an actual processing error.
             continue
-        
-        # main_ref_e and main_ref_n must be defined here if lots are present (ensured by earlier check)
+
+        # If we reach here, main_ref_e and main_ref_n are guaranteed to be valid,
+        # and lines_text is present and is a string.
         single_lot_result = _calculate_single_lot_geometry(
             transformer_to_latlon, main_ref_e, main_ref_n, lines_text, lot_id, lot_name
         )
@@ -629,14 +763,7 @@ def _prepare_export_data_for_routes(request_data, export_format_name):
     lots_data_from_payload = request_data.get('lots', [])
     # current_app is now imported at module level
 
-    if not selected_display_name and not lots_data_from_payload:
-        msg = (
-            f"No reference point selected and no lot data provided. Please "
-            f"select a reference point or add lot details to export for "
-            f"{export_format_name}."
-        )
-        return None, (jsonify({"status": "error", "message": msg}), 400)
-
+    # Get transformers first, as they might be needed for client E/N
     transformer_to_latlon, _, err_msg_transformer = get_transformers(
         target_crs_epsg_str
     )
@@ -657,10 +784,42 @@ def _prepare_export_data_for_routes(request_data, export_format_name):
             "message": f"Failed to load reference points: {csv_err_msg}"
         }), 500)
 
-    main_ref_e, main_ref_n = None, None
+    main_ref_e_client = request_data.get('main_ref_e')
+    main_ref_n_client = request_data.get('main_ref_n')
+    main_ref_e = None
+    main_ref_n = None
     main_ref_transformed_lonlat = None
+    using_client_ref_coords = False
 
-    if selected_display_name:
+    if main_ref_e_client is not None and main_ref_n_client is not None:
+        try:
+            main_ref_e = float(main_ref_e_client)
+            main_ref_n = float(main_ref_n_client)
+            if transformer_to_latlon: # Ensure transformer is available
+                # pyproj always_xy=True means transform expects (x, y) -> (lon, lat) for projected to geographic
+                main_ref_transformed_lonlat = transformer_to_latlon.transform(main_ref_e, main_ref_n)
+            using_client_ref_coords = True
+            current_app.logger.info(
+                f"Export ({export_format_name}): Using client-provided reference: E {main_ref_e}, N {main_ref_n}"
+            )
+        except ValueError:
+            current_app.logger.warning(
+                f"Export ({export_format_name}): Could not parse client main_ref_e ('{main_ref_e_client}') or "
+                f"main_ref_n ('{main_ref_n_client}') as float. Falling back to selected reference point name."
+            )
+            main_ref_e = None # Ensure fallback
+            main_ref_n = None # Ensure fallback
+            using_client_ref_coords = False # Explicitly set for clarity
+        except Exception as e_tx: # Catch transformation errors for client coords
+            current_app.logger.error(
+                f"Export ({export_format_name}): Error transforming client-provided E {main_ref_e_client}, "
+                f"N {main_ref_n_client} to Lat/Lon: {str(e_tx)}", exc_info=True
+            )
+            # main_ref_transformed_lonlat remains None. If E/N were valid, they can still be used for projected exports.
+            # The calling export function must handle None for main_ref_transformed_lonlat if it needs it.
+            using_client_ref_coords = True # Still true because we used client E/N, even if transform failed.
+
+    if not using_client_ref_coords and selected_display_name:
         selected_point_details = next(
             (p for p in ref_pts_list if p['display_name'] == selected_display_name),
             None
@@ -674,37 +833,57 @@ def _prepare_export_data_for_routes(request_data, export_format_name):
         try:
             main_ref_e = float(selected_point_details['EASTINGS'])
             main_ref_n = float(selected_point_details['NORTHINGS'])
+            current_app.logger.info(
+                f"Export ({export_format_name}): Using reference from CSV '{selected_display_name}': E {main_ref_e}, N {main_ref_n}"
+            )
             if transformer_to_latlon:
                 main_ref_transformed_lonlat = transformer_to_latlon.transform(
                     main_ref_e, main_ref_n
                 )
         except ValueError:
             msg = (
-                "The coordinates for the selected reference point are invalid. "
-                "Please check the reference data."
+                f"The coordinates for the selected reference point '{selected_display_name}' "
+                f"in the reference data are invalid. Please check the CSV file."
             )
             current_app.logger.error(
-                f"ValueError for reference point '{selected_display_name}' coordinates: "
-                f"E='{selected_point_details['EASTINGS']}', "
-                f"N='{selected_point_details['NORTHINGS']}'"
+                f"Export ({export_format_name}): ValueError for reference point '{selected_display_name}' coordinates: "
+                f"E='{selected_point_details.get('EASTINGS', 'N/A')}', "
+                f"N='{selected_point_details.get('NORTHINGS', 'N/A')}'"
             )
             return None, (jsonify({"status": "error", "message": msg}), 400)
         except Exception as e_tx:
             current_app.logger.error(
-                f"{export_format_name}: Error transforming main ref point "
-                f"'{selected_display_name}': {str(e_tx)}", exc_info=True
+                f"Export ({export_format_name}): Error transforming CSV ref point "
+                f"'{selected_display_name}' (E:{main_ref_e}, N:{main_ref_n}) to Lat/Lon: {str(e_tx)}", exc_info=True
             )
-            # This error is logged; export can proceed if only main ref point
-            # transformation fails.
-    elif lots_data_from_payload:  # No ref point selected, but lot data is present
+            # main_ref_transformed_lonlat remains None.
+
+    # Critical check for reference point if lots with actual survey lines are present
+    if main_ref_e is None or main_ref_n is None:
+        has_lot_lines = any(
+            isinstance(lot, dict) and lot.get('lines_text', '').strip() 
+            for lot in lots_data_from_payload
+        )
+        if has_lot_lines:
+            msg = (
+                f"A valid reference point (either selected or manually placed/dragged) "
+                f"is required to export lot data for {export_format_name}."
+            )
+            return None, (jsonify({"status": "error", "message": msg}), 400)
+    
+    # Check if there's anything to export at all
+    # (no client coords, no selected name, and no lot data)
+    if not using_client_ref_coords and not selected_display_name and not lots_data_from_payload:
         msg = (
-            f"A reference point must be selected when exporting lot data to "
-            f"{export_format_name}. Please select a reference point."
+            f"No reference point selected or client-provided, and no lot data "
+            f"provided. Please select a reference point or add lot details to "
+            f"export for {export_format_name}."
         )
         return None, (jsonify({"status": "error", "message": msg}), 400)
 
+
     params = {
-        "transformer_to_latlon": transformer_to_latlon,
+        "transformer_to_latlon": transformer_to_latlon, # May be None if get_transformers failed earlier
         "main_ref_e": main_ref_e,
         "main_ref_n": main_ref_n,
         "main_ref_transformed_lonlat": main_ref_transformed_lonlat,
