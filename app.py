@@ -1424,7 +1424,3 @@ def export_geojson_multi():
     download_filename = f'{filename_base}_epsg{target_crs_epsg_str}_multi_lot_survey.geojson'
     
     return send_file(geojson_buffer, download_name=download_filename, as_attachment=True, mimetype='application/geo+json')
-
-if __name__ == '__main__':
-
-    app.run(debug=False, host='0.0.0.0', port=80)
