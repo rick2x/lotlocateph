@@ -1,3 +1,4 @@
+
 $(document).ready(function () {
     const primeSymbol = '′';
     const lotListUL = $('#lotList');
@@ -9,6 +10,22 @@ $(document).ready(function () {
     let surveyLotsStore = {};
 
     let map;
+    let currentTileLayer = null; // To keep track of the current basemap layer
+    const basemaps = {
+        'esriImagery': {
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            options: { attribution: 'Tiles &copy; Esri & Contributors', maxZoom: 19 }
+        },
+        'osmStandard': {
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            options: { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19 }
+        },
+        'esriStreet': {
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            options: { attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012', maxZoom: 19 }
+        }
+    };
+
     let plottedFeatureGroups = {};
     let mainReferenceMarker = null;
     let debounceTimeout;
@@ -16,11 +33,31 @@ $(document).ready(function () {
 
     let isEditorMinimized = false; // State for editor minimize/maximize
 
+    // Basemap Persistence - Load
+    let initialBasemapKey = localStorage.getItem('selectedBasemap') || 'esriImagery'; // Default to 'esriImagery'
+    $('#basemapSelect').val(initialBasemapKey); // Set dropdown to reflect loaded/default choice
+
     // --- INITIALIZATION ---
+
+    function updateBasemap(selectedBasemapKey) {
+        const selectedLayerConfig = basemaps[selectedBasemapKey];
+
+        if (!selectedLayerConfig) {
+            console.error('Invalid basemap key selected:', selectedBasemapKey);
+            return;
+        }
+
+        if (currentTileLayer) {
+            map.removeLayer(currentTileLayer);
+        }
+
+        currentTileLayer = L.tileLayer(selectedLayerConfig.url, selectedLayerConfig.options);
+        currentTileLayer.addTo(map);
+    }
 
     function initMap() {
         if (map) {
-            map.remove();
+            map.remove(); // Remove existing map instance if any
         }
         map = L.map('map', {
             fullscreenControl: {
@@ -31,16 +68,20 @@ $(document).ready(function () {
             },
             zoomControl: false // Disable the default zoom control
         }).setView([12.8797, 121.7740], 6); // Default view over the Philippines
-
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles © Esri & Contributors',
-            maxZoom: 19
-        }).addTo(map);
+        
+        updateBasemap(initialBasemapKey); // Use the loaded/default key
 
         L.control.zoom({
             position: 'bottomright' // Add zoom control to bottom right
         }).addTo(map);
     }
+
+    // Basemap selector change event
+    $('#basemapSelect').on('change', function() {
+        const selectedKey = $(this).val();
+        updateBasemap(selectedKey);
+        localStorage.setItem('selectedBasemap', selectedKey); // Basemap Persistence - Save
+    });
 
     if (typeof $.fn.select2 === 'function') {
         $('#reference_point_select').select2({
@@ -52,19 +93,35 @@ $(document).ready(function () {
         }).on('change', triggerMapUpdateWithDebounce);
     }
 
-    $('#target_crs_select').on('change', triggerMapUpdateWithDebounce);
+    $('#target_crs_select').on('change', function() {
+        localStorage.setItem('selectedCRS', $(this).val());
+        triggerMapUpdateWithDebounce();
+    });
+
+    // Event listeners for map display toggles
+    $('#toggleTieLines, #togglePobMarkers, #toggleParcelVertices').on('change', function() {
+        triggerMapUpdateWithDebounce();
+    });
 
     $('#closeDisclaimerBtn').on('click', function () {
         $('#disclaimerBar').slideUp();
     });
 
+    // Load and apply saved CRS from LocalStorage
+    const savedCRS = localStorage.getItem('selectedCRS');
+    if (savedCRS) {
+        $('#target_crs_select').val(savedCRS);
+        // Trigger change to apply the loaded CRS and update map/UI accordingly
+        $('#target_crs_select').trigger('change'); 
+    }
+
     // --- DATA MANAGEMENT & PREVIEW ---
 
-    function formatDataLine(ns, deg, min, ew, dist) {
+    function formatDataLine(ns, deg, min, ew, dist) { // comment parameter removed
         const degStr = String(deg).padStart(2, '0');
         const minStr = String(min).padStart(2, '0');
         const distStr = parseFloat(dist).toFixed(2);
-        return `${ns} ${degStr}D ${minStr}${primeSymbol} ${ew};${distStr};90`; // Assuming 90 for angle type for now
+        return `${ns} ${degStr}D ${minStr}${primeSymbol} ${ew};${distStr};90`; // Reverted to previous format
     }
 
     function persistActiveLotData() {
@@ -94,6 +151,7 @@ $(document).ready(function () {
             const minVal = row.find('.point-min').val();
             const ew = row.find('.point-ew').val();
             const distVal = row.find('.point-dist').val();
+            // const commentVal = row.find('.point-comment').val().trim(); // Removed commentVal
 
             if (ns && degVal && minVal && ew && distVal) {
                 const deg = parseInt(degVal, 10);
@@ -102,7 +160,7 @@ $(document).ready(function () {
                 if (!isNaN(deg) && deg >= 0 && deg <= 89 && 
                     !isNaN(min) && min >= 0 && min <= 59 && 
                     !isNaN(dist) && dist > 0) {
-                    dataLines.push(formatDataLine(ns, deg, min, ew, dist));
+                    dataLines.push(formatDataLine(ns, deg, min, ew, dist)); // Reverted call
                 }
             }
         });
@@ -110,6 +168,31 @@ $(document).ready(function () {
     }
 
     // --- LOT MANAGEMENT UI (MASTER-DETAIL) ---
+
+    function clearAllLots() {
+        if (!confirm('Are you sure you want to clear all lots? This will remove all entered data and cannot be undone.')) {
+            return;
+        }
+
+        persistActiveLotData(); // Save current active lot's data if any
+
+        surveyLotsStore = {}; // Clear the client-side store
+        lotListUL.empty(); // Remove all lot items from UI
+
+        clearAllLotMapLayers(true); // Clear all map layers including reference marker
+
+        lotCounter = 0; // Reset lot counter
+
+        activeLotId = null;
+        activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">All lots cleared. Add a new lot to begin.</div>').addClass('placeholder');
+        activeLotEditorArea.removeClass('editor-minimized'); // Ensure editor is not stuck in minimized state
+
+        addLot(); // Add a fresh "Lot 1"
+
+        triggerMapUpdateWithDebounce(); // Refresh map state
+
+        displayMessage('info', 'All lots have been cleared.');
+    }
 
     function addLot() {
         lotCounter++;
@@ -232,9 +315,37 @@ $(document).ready(function () {
                     <div class="surveyPointsListContainer"></div>
                 </div>
             </div>
+            <div class="misclosure-display-section">
+                <h4>Lot Misclosure</h4>
+                <p><strong>Distance:</strong> <span id="misclosureDistanceDisplay">-</span></p>
+                <p><strong>Bearing:</strong> <span id="misclosureBearingDisplay">-</span></p>
+            </div>
+            <div class="area-display-section">
+                <h4>Lot Area</h4>
+                <p><strong>Square meters:</strong> <span id="areaSqmDisplay">-</span></p>
+                <p><strong>Hectares:</strong> <span id="areaHectaresDisplay">-</span></p>
+            </div>
             <button type="button" class="btn btn-primary btn-add-point-to-lot">${buttonTextContent}</button>
         `;
         activeLotEditorArea.html(editorHtml);
+
+        // Populate misclosure data
+        if (lotData && lotData.misclosure) {
+            $('#misclosureDistanceDisplay').text(lotData.misclosure.distance || '-');
+            $('#misclosureBearingDisplay').text(lotData.misclosure.bearing || '-');
+        } else {
+            $('#misclosureDistanceDisplay').text('-');
+            $('#misclosureBearingDisplay').text('-');
+        }
+
+        // Populate area data (simplified)
+        if (lotData && lotData.areas) {
+            $('#areaSqmDisplay').text(lotData.areas.sqm || '-');
+            $('#areaHectaresDisplay').text(lotData.areas.hectares || '-');
+        } else {
+            $('#areaSqmDisplay').text('-');
+            $('#areaHectaresDisplay').text('-');
+        }
 
         if (isEditorMinimized) {
             activeLotEditorArea.addClass('editor-minimized');
@@ -257,10 +368,10 @@ $(document).ready(function () {
         const lines = lotData.lines_text.split('\n').filter(line => line.trim() !== '');
         if (lines.length > 0) {
             lines.forEach(line => {
-                const parts = line.split(';');
-                const bearingDistance = (parts.length >= 2) ? [parts[0], parts[1]] : null;
-                if (bearingDistance) {
-                    addSurveyPointRowToActiveEditor(surveyPointsListContainer, bearingDistance);
+                const parts = line.split(';'); // Reverted
+                const bearingDistance = (parts.length >= 2) ? [parts[0], parts[1]] : null; // Reverted
+                if (bearingDistance) { // Reverted
+                    addSurveyPointRowToActiveEditor(surveyPointsListContainer, bearingDistance); // Reverted
                 }
             });
         } else {
@@ -275,9 +386,9 @@ $(document).ready(function () {
             return;
         }
         const lotSpecificPointIndex = surveyPointsListContainer.children().length + 1;
-        let nsVal = 'N', degVal = '', minVal = '', ewVal = 'E', distVal = '';
+        let nsVal = 'N', degVal = '', minVal = '', ewVal = 'E', distVal = ''; // commentVal removed
 
-        if (data && data[0] && data[1]) {
+        if (data && data[0] && typeof data[1] !== 'undefined') { // data[1] (distance) can be "0"
             const bearingParts = parseBearing(data[0]);
             if (bearingParts) {
                 nsVal = bearingParts.ns;
@@ -286,6 +397,7 @@ $(document).ready(function () {
                 ewVal = bearingParts.ew;
             }
             distVal = parseFloat(data[1]).toFixed(2);
+            // commentVal = data[2] || ''; // Removed
         }
 
         const inputNamePrefix = `${activeLotId}_line${lotSpecificPointIndex}`;
@@ -346,6 +458,7 @@ $(document).ready(function () {
     // --- EVENT HANDLERS ---
 
     $('#addLotBtnSidebar').on('click', addLot);
+    $('#clearAllLotsBtn').on('click', clearAllLots);
 
     lotListUL.on('click', 'li', function () {
         setActiveLot($(this).data('lot-id'));
@@ -398,6 +511,19 @@ $(document).ready(function () {
 
     // --- MESSAGING, VALIDATION, PAYLOAD, SERVER CALLS ---
 
+    function showLoading(message = "Processing...") {
+        const overlay = $('#loadingOverlay');
+        const messageElement = $('#loadingMessage');
+        
+        messageElement.text(message);
+        overlay.css('display', 'flex');
+    }
+
+    function hideLoading() {
+        const overlay = $('#loadingOverlay');
+        overlay.css('display', 'none');
+    }
+
     function displayMessage(type, message) {
         if (messageFadeTimeoutId) {
             clearTimeout(messageFadeTimeoutId);
@@ -442,45 +568,70 @@ $(document).ready(function () {
             formIsValid = false;
         }
 
-        let firstErrorLotName = null;
-        let firstErrorLotLine = -1;
+        let specificErrorMessage = null; // Used to store the first specific error found
 
-        for (const lotId in surveyLotsStore) {
-            if (surveyLotsStore.hasOwnProperty(lotId)) {
-                const lot = surveyLotsStore[lotId];
-                const lines = lot.lines_text.split('\n').filter(l => l.trim() !== '');
+        // Using a traditional for loop to allow breaking out of it
+        const lotIds = Object.keys(surveyLotsStore);
+        for (let i = 0; i < lotIds.length; i++) {
+            const lotId = lotIds[i];
+            const lot = surveyLotsStore[lotId];
+            const lines = lot.lines_text.split('\n').filter(l => l.trim() !== '');
 
-                if (lines.length > 0) {
-                    lines.forEach((line, index) => {
-                        const parts = line.split(';');
-                        if (parts.length < 2) {
-                            if (firstErrorLotName === null) {
-                                firstErrorLotName = lot.name;
-                                firstErrorLotLine = index + 1;
-                            }
-                            formIsValid = false;
-                            return; // from forEach callback
-                        }
-                        const bearingData = parseBearing(parts[0]);
-                        const dist = parseFloat(parts[1]);
-                        if (!bearingData || isNaN(dist) || dist <= 0 || 
-                            bearingData.deg < 0 || bearingData.deg > 89 || 
-                            bearingData.min < 0 || bearingData.min > 59) {
-                            if (firstErrorLotName === null) {
-                                firstErrorLotName = lot.name;
-                                firstErrorLotLine = index + 1;
-                            }
-                            formIsValid = false;
-                        }
-                    });
+            if (lines.length > 0) {
+                for (let j = 0; j < lines.length; j++) {
+                    const line = lines[j];
+                    const lineNum = j + 1;
+                    const parts = line.split(';');
+
+                    if (parts.length < 2) {
+                        specificErrorMessage = `Lot "${lot.name}", Line ${lineNum}: Incomplete line data. Expected bearing and distance.`;
+                        formIsValid = false;
+                        break; // Exit lines loop for this lot
+                    }
+
+                    const bearingData = parseBearing(parts[0]);
+                    const distStr = parts[1].trim(); // Get the distance string for detailed error reporting
+                    const dist = parseFloat(distStr);
+
+                    if (!bearingData) {
+                        specificErrorMessage = `Lot "${lot.name}", Line ${lineNum}: Invalid bearing format.`;
+                        formIsValid = false;
+                        break; 
+                    }
+                    
+                    // Validate Degrees
+                    if (typeof bearingData.deg !== 'number' || !Number.isInteger(bearingData.deg) || bearingData.deg < 0 || bearingData.deg > 89) {
+                        specificErrorMessage = `Lot "${lot.name}", Line ${lineNum}: Degrees must be an integer between 0 and 89. Found: '${bearingData.deg}'.`;
+                        formIsValid = false;
+                        break;
+                    }
+
+                    // Validate Minutes
+                    if (typeof bearingData.min !== 'number' || !Number.isInteger(bearingData.min) || bearingData.min < 0 || bearingData.min > 59) {
+                        specificErrorMessage = `Lot "${lot.name}", Line ${lineNum}: Minutes must be an integer between 0 and 59. Found: '${bearingData.min}'.`;
+                        formIsValid = false;
+                        break;
+                    }
+                    
+                    // Validate Distance
+                    if (isNaN(dist) || dist <= 0) {
+                        specificErrorMessage = `Lot "${lot.name}", Line ${lineNum}: Distance must be a positive number. Found: '${distStr}'.`;
+                        formIsValid = false;
+                        break;
+                    }
                 }
             }
+            if (!formIsValid) break; // Exit lots loop if an error was found in any lot
         }
 
-        if (!formIsValid && firstErrorLotName && showAlerts) {
-            displayMessage('error', `Invalid data in Lot "${firstErrorLotName}", around Line ${firstErrorLotLine}. Please correct and try again.`);
+        if (!formIsValid && specificErrorMessage && showAlerts) {
+            displayMessage('error', specificErrorMessage);
+        } else if (!formIsValid && showAlerts && !specificErrorMessage) {
+            // This case handles general errors like missing CRS/Ref Point if no specific line error was set
+            // displayMessage('error', "Please correct the highlighted errors."); // Or a more generic message
+            // No change needed here if existing messages for CRS/Ref point are sufficient
         }
-
+        
         const isExportAction = (targetId) => ['exportShapefileBtn', 'exportKmzBtn', 'exportDxfBtn', 'exportGeoJsonBtn'].includes(targetId);
         if (isExportAction(eventTargetId) && 
             lotsForPayload.filter(l => l.lines_text.trim() !== "").length === 0 && 
@@ -555,7 +706,8 @@ $(document).ready(function () {
             return;
         }
 
-        displayMessage('info', 'Updating map...');
+        // displayMessage('info', 'Updating map...'); // Replaced by showLoading
+        showLoading('Updating map...');
         fetch('/calculate_plot_data_multi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -565,10 +717,42 @@ $(document).ready(function () {
         .then(result => {
             clearMessages();
             if (result.status === 'success' || result.status === 'success_with_errors') {
+                // Store misclosure data and then plot
+                // Store misclosure and area data then plot
+                (result.data_per_lot || []).forEach(lotResult => {
+                    if (surveyLotsStore[lotResult.lot_id]) {
+                        if (lotResult.misclosure) {
+                            surveyLotsStore[lotResult.lot_id].misclosure = lotResult.misclosure;
+                        }
+                        if (lotResult.areas) { // Store area data
+                            surveyLotsStore[lotResult.lot_id].areas = lotResult.areas;
+                        }
+                    }
+                });
+
                 plotMultiLotDataOnMap(result.data_per_lot, result.reference_plot_data);
+
+                // Update misclosure display for the currently active lot
+                if (activeLotId && surveyLotsStore[activeLotId] && surveyLotsStore[activeLotId].misclosure) {
+                    $('#misclosureDistanceDisplay').text(surveyLotsStore[activeLotId].misclosure.distance || '-');
+                    $('#misclosureBearingDisplay').text(surveyLotsStore[activeLotId].misclosure.bearing || '-');
+                } else if (activeLotId) {
+                    $('#misclosureDistanceDisplay').text('-');
+                    $('#misclosureBearingDisplay').text('-');
+                }
+
+                // Update area display for the currently active lot
+                if (activeLotId && surveyLotsStore[activeLotId] && surveyLotsStore[activeLotId].areas) {
+                    $('#areaSqmDisplay').text(surveyLotsStore[activeLotId].areas.sqm || '-');
+                    $('#areaHectaresDisplay').text(surveyLotsStore[activeLotId].areas.hectares || '-');
+                } else if (activeLotId) { // Active lot might not have area if it had errors or no data to compute area
+                    $('#areaSqmDisplay').text('-');
+                    $('#areaHectaresDisplay').text('-');
+                }
+                
                 if (result.status === 'success_with_errors') {
                     let errorMessages = ["Map updated. Some lots may have issues:"];
-                    (result.data_per_lot || []).forEach(lr => {
+                    (result.data_per_lot || []).forEach(lr => { // lr is lotResult here
                         if (lr.status === 'error') {
                             errorMessages.push(`Lot '${lr.lot_name}': ${lr.message}`);
                         } else if (lr.status === 'nodata' && 
@@ -595,6 +779,9 @@ $(document).ready(function () {
             console.error('Plot Fetch Error:', error);
             displayMessage('error', 'Failed to update map. Check console or server logs.');
             clearAllLotMapLayers(true); // Clear map on fetch error
+        })
+        .finally(() => {
+            hideLoading();
         });
     }
 
@@ -619,6 +806,10 @@ $(document).ready(function () {
             initMap(); // Should already be initialized, but as a fallback
         }
         clearAllLotMapLayers(false); // Clear previous lot layers but keep main ref if any
+
+        const showTieLines = $('#toggleTieLines').is(':checked');
+        const showPobMarkers = $('#togglePobMarkers').is(':checked');
+        const showParcelVertices = $('#toggleParcelVertices').is(':checked');
 
         let allLatLngsForBounds = [];
 
@@ -660,7 +851,7 @@ $(document).ready(function () {
             let currentLotFeatureGroup = plottedFeatureGroups[lotId];
 
             let lotHasDrawableData = false;
-            if (plotData.tie_line_latlngs && plotData.tie_line_latlngs.length > 0) {
+            if (showTieLines && plotData.tie_line_latlngs && plotData.tie_line_latlngs.length > 0) {
                 const tieLine = L.polyline(plotData.tie_line_latlngs, { 
                     color: '#e60000', dashArray: '6, 6', weight: 2.5, opacity: 0.8 
                 }).bindPopup(`Tie-Line for ${lotName}`);
@@ -674,20 +865,37 @@ $(document).ready(function () {
                 const parcelPolyline = L.polyline(parcelPath, { 
                     color: color, weight: 3.5, opacity: 0.9 
                 }).bindPopup(`Boundary: ${lotName}`);
-                currentLotFeatureGroup.addLayer(parcelPolyline);
+                currentLotFeatureGroup.addLayer(parcelPolyline); // Parcel boundary line always shown
                 parcelPath.forEach(p => allLatLngsForBounds.push(p));
                 lotHasDrawableData = true;
 
                 parcelPath.forEach((point, pIndex) => {
                     let label = (pIndex === 0) ? `POB: ${lotName}` : `Pt ${pIndex + 1}: ${lotName}`;
-                    // Avoid duplicating POB marker if parcel closes on itself
-                    if (pIndex === parcelPath.length - 1 && pIndex > 0 &&
-                        parcelPath[0][0] === point[0] && parcelPath[0][1] === point[1]) {
-                        // This is the closing point, same as POB, don't add another marker if POB is already marked
-                    } else {
+                    const isPobPoint = pIndex === 0;
+                    const isClosingPoint = pIndex === parcelPath.length - 1 && pIndex > 0 &&
+                                           parcelPath[0][0] === point[0] && parcelPath[0][1] === point[1];
+
+                    if (isClosingPoint) {
+                        // Skip if it's a closing point identical to POB, to avoid duplicate markers
+                        // (especially if POB markers are on and vertex markers are off)
+                    } else if (isPobPoint && showPobMarkers) {
+                        const pobMarker = L.circleMarker(point, { 
+                            radius: 5, // Slightly larger or different style for POB
+                            color: color, 
+                            weight: 1, 
+                            fillColor: '#FFD700', // Gold color for POB
+                            fillOpacity: 0.9, 
+                            title: label 
+                        }).bindPopup(label);
+                        currentLotFeatureGroup.addLayer(pobMarker);
+                    } else if (!isPobPoint && showParcelVertices) {
                         const vertexMarker = L.circleMarker(point, { 
-                            radius: 4.5, color: color, weight: 1, 
-                            fillColor: color, fillOpacity: 0.7, title: label 
+                            radius: 4.5, 
+                            color: color, 
+                            weight: 1, 
+                            fillColor: color, 
+                            fillOpacity: 0.7, 
+                            title: label 
                         }).bindPopup(label);
                         currentLotFeatureGroup.addLayer(vertexMarker);
                     }
@@ -759,7 +967,9 @@ $(document).ready(function () {
             return;
         }
         
-        displayMessage('info', 'Preparing Shapefile export...');
+        // displayMessage('info', 'Preparing Shapefile export...'); // Replaced by showLoading
+        showLoading('Preparing Shapefile export...');
+        $('.btn-export').prop('disabled', true);
         fetch('/export_shapefile_multi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -771,6 +981,10 @@ $(document).ready(function () {
             clearMessages();
             console.error('Shapefile Export Error:', error);
             displayMessage('error', 'Shapefile Export Failed: ' + error.message);
+        })
+        .finally(() => {
+            hideLoading();
+            $('.btn-export').prop('disabled', false);
         });
     });
 
@@ -789,7 +1003,9 @@ $(document).ready(function () {
             return;
         }
 
-        displayMessage('info', 'Preparing KMZ export...');
+        // displayMessage('info', 'Preparing KMZ export...'); // Replaced by showLoading
+        showLoading('Preparing KMZ export...');
+        $('.btn-export').prop('disabled', true);
         fetch('/export_kmz_multi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -801,6 +1017,10 @@ $(document).ready(function () {
             clearMessages();
             console.error('KMZ Export Error:', error);
             displayMessage('error', 'KMZ Export Failed: ' + error.message);
+        })
+        .finally(() => {
+            hideLoading();
+            $('.btn-export').prop('disabled', false);
         });
     });
 
@@ -819,7 +1039,9 @@ $(document).ready(function () {
             return;
         }
         
-        displayMessage('info', 'Preparing DXF export...');
+        // displayMessage('info', 'Preparing DXF export...'); // Replaced by showLoading
+        showLoading('Preparing DXF export...');
+        $('.btn-export').prop('disabled', true);
         fetch('/export_dxf_multi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -831,6 +1053,10 @@ $(document).ready(function () {
             clearMessages();
             console.error('DXF Export Error:', error);
             displayMessage('error', 'DXF Export Failed: ' + error.message);
+        })
+        .finally(() => {
+            hideLoading();
+            $('.btn-export').prop('disabled', false);
         });
     });
 
@@ -849,7 +1075,9 @@ $(document).ready(function () {
             return;
         }
 
-        displayMessage('info', 'Preparing GeoJSON export...');
+        // displayMessage('info', 'Preparing GeoJSON export...'); // Replaced by showLoading
+        showLoading('Preparing GeoJSON export...');
+        $('.btn-export').prop('disabled', true);
         fetch('/export_geojson_multi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -861,6 +1089,10 @@ $(document).ready(function () {
             clearMessages();
             console.error('GeoJSON Export Error:', error);
             displayMessage('error', 'GeoJSON Export Failed: ' + error.message);
+        })
+        .finally(() => {
+            hideLoading();
+            $('.btn-export').prop('disabled', false);
         });
     });
 
