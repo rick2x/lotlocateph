@@ -117,11 +117,11 @@ $(document).ready(function () {
 
     // --- DATA MANAGEMENT & PREVIEW ---
 
-    function formatDataLine(ns, deg, min, ew, dist) { // comment parameter removed
+    function formatDataLine(ns, deg, min, ew, dist) {
         const degStr = String(deg).padStart(2, '0');
         const minStr = String(min).padStart(2, '0');
         const distStr = parseFloat(dist).toFixed(2);
-        return `${ns} ${degStr}D ${minStr}${primeSymbol} ${ew};${distStr};90`; // Reverted to previous format
+        return `${ns} ${degStr}D ${minStr}${primeSymbol} ${ew};${distStr}`;
     }
 
     function persistActiveLotData() {
@@ -151,7 +151,6 @@ $(document).ready(function () {
             const minVal = row.find('.point-min').val();
             const ew = row.find('.point-ew').val();
             const distVal = row.find('.point-dist').val();
-            // const commentVal = row.find('.point-comment').val().trim(); // Removed commentVal
 
             if (ns && degVal && minVal && ew && distVal) {
                 const deg = parseInt(degVal, 10);
@@ -368,10 +367,10 @@ $(document).ready(function () {
         const lines = lotData.lines_text.split('\n').filter(line => line.trim() !== '');
         if (lines.length > 0) {
             lines.forEach(line => {
-                const parts = line.split(';'); // Reverted
-                const bearingDistance = (parts.length >= 2) ? [parts[0], parts[1]] : null; // Reverted
-                if (bearingDistance) { // Reverted
-                    addSurveyPointRowToActiveEditor(surveyPointsListContainer, bearingDistance); // Reverted
+                const parts = line.split(';');
+                const bearingDistance = (parts.length >= 2) ? [parts[0], parts[1]] : null;
+                if (bearingDistance) {
+                    addSurveyPointRowToActiveEditor(surveyPointsListContainer, bearingDistance);
                 }
             });
         } else {
@@ -386,7 +385,7 @@ $(document).ready(function () {
             return;
         }
         const lotSpecificPointIndex = surveyPointsListContainer.children().length + 1;
-        let nsVal = 'N', degVal = '', minVal = '', ewVal = 'E', distVal = ''; // commentVal removed
+        let nsVal = 'N', degVal = '', minVal = '', ewVal = 'E', distVal = '';
 
         if (data && data[0] && typeof data[1] !== 'undefined') { // data[1] (distance) can be "0"
             const bearingParts = parseBearing(data[0]);
@@ -397,7 +396,6 @@ $(document).ready(function () {
                 ewVal = bearingParts.ew;
             }
             distVal = parseFloat(data[1]).toFixed(2);
-            // commentVal = data[2] || ''; // Removed
         }
 
         const inputNamePrefix = `${activeLotId}_line${lotSpecificPointIndex}`;

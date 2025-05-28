@@ -24,9 +24,10 @@ def parse_survey_line_to_bearing_distance(line_str):
                       on successful parsing, or None if parsing fails.
     """
     parts = line_str.split(';')
-    if len(parts) < 2:
+    # Expect exactly 2 parts: bearing and distance.
+    if len(parts) != 2:
         current_app.logger.warning(
-            f"Invalid survey line (not enough parts): {line_str}"
+            f"Invalid survey line (expected 2 parts, got {len(parts)}): {line_str}"
         )
         return None
     try:
@@ -81,9 +82,24 @@ def calculate_azimuth(bearing_info):
         float or None: The calculated azimuth in decimal degrees, or None
                        if the bearing information is invalid.
     """
+    # Validate structure of bearing_info
+    required_keys = ['ns', 'ew', 'deg', 'min']
+    if not all(key in bearing_info for key in required_keys):
+        current_app.logger.error(
+            f"Invalid bearing_info structure (missing keys): {bearing_info}"
+        )
+        return None
+
     dec_deg = bearing_info['deg'] + (bearing_info['min'] / 60.0)
     ns = bearing_info['ns']
     ew = bearing_info['ew']
+
+    # Validate ns and ew values
+    if ns not in ['N', 'S'] or ew not in ['E', 'W']:
+        current_app.logger.error(
+            f"Invalid NS ('{ns}') or EW ('{ew}') values in bearing_info: {bearing_info}"
+        )
+        return None
 
     if ns == 'N' and ew == 'E':
         return dec_deg

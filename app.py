@@ -38,11 +38,10 @@ from utils import (
 )
 
 # Area Conversion Constants
-# SQM_TO_SQFT = 10.7639 # Removed
-# SQM_TO_ACRES = 0.000247105 # Removed
 SQM_TO_HECTARES = 0.0001
 
 app = Flask(__name__)
+# FIXME: Hardcoded secret key. In a production environment, this should be loaded from an environment variable or a secure configuration file.
 app.secret_key = 'your_very_secret_key_rizal_encoder_v13_csv_cache'  # TODO: Change in production
 
 limiter = Limiter(
@@ -55,6 +54,7 @@ limiter = Limiter(
 
 # Application configuration
 config = {
+    # FIXME: DEBUG mode should be False in production and ideally controlled by an environment variable.
     "DEBUG": True,  # TODO: Set to False in production
     "CACHE_TYPE": "SimpleCache",  # In-memory cache
     "CACHE_DEFAULT_TIMEOUT": 3600  # 1 hour
@@ -426,7 +426,6 @@ def index():
         'index.html',
         reference_points_data=ref_pts,
         reference_points_data_json=json.dumps(ref_pts),
-        initial_data_lines_json=json.dumps([]), # For potential future use
         csv_error_message=csv_err_msg if not ref_pts else None,
         selected_ref_point_name=None # No pre-selection
     )
@@ -593,10 +592,6 @@ def calculate_plot_data_multi_endpoint():
         formatted_areas = {"sqm": None, "hectares": None} # Simplified
         if lot_result_item["status"] == "success" and raw_area_sqm is not None and isinstance(raw_area_sqm, (int, float)):
             formatted_areas["sqm"] = f"{raw_area_sqm:.3f} sqm"
-            # area_sqft = raw_area_sqm * SQM_TO_SQFT # Removed
-            # formatted_areas["sqft"] = f"{area_sqft:.3f} sqft" # Removed
-            # area_acres = raw_area_sqm * SQM_TO_ACRES # Removed
-            # formatted_areas["acres"] = f"{area_acres:.4f} acres" # Removed
             area_hectares = raw_area_sqm * SQM_TO_HECTARES
             formatted_areas["hectares"] = f"{area_hectares:.4f} ha"
         lot_result_item["areas"] = formatted_areas
