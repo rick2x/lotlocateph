@@ -138,36 +138,6 @@ ul {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* --- Suggested Features --- */
-#suggestedFeaturesList {
-    list-style: none;
-    padding-inline-start: 0px; /* Explicitly remove browser default padding */
-    margin-top: 0.5rem; /* Space below the header */
-    margin-bottom: 0.8rem; /* Space before the next section or element */
-}
-
-#suggestedFeaturesList li {
-    padding: 0.3rem 0; /* Adjusted padding */
-    margin-bottom: 0.3rem; /* Space between items */
-    font-size: 0.85rem; /* Slightly smaller text */
-    color: var(--text-color); /* Standard text color */
-    border-bottom: 1px dashed var(--border-color); /* Subtle separator */
-    /* Example: Add a hover effect if items become interactive */
-    /* cursor: pointer; */
-    /* transition: background-color 0.2s; */
-}
-
-/*
-#suggestedFeaturesList li:hover {
-    background-color: #e7f0fa;
-    color: var(--primary-color);
-}
-*/
-
-#suggestedFeaturesList li:last-child {
-    border-bottom: none; /* Remove border from the last item */
-    margin-bottom: 0;
-}
 
 /* --- Map --- */
 .map-container {
