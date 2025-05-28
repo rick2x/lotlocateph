@@ -127,7 +127,8 @@ ul {
     min-height: 0;
 }
 
-.sidebar-section h2 {
+.sidebar-section h2,
+.sidebar-section.suggested-features h2 {
     font-size: 1rem;
     font-weight: 600;
     color: var(--primary-color);
@@ -135,6 +136,37 @@ ul {
     margin-bottom: 0.8rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
+}
+
+/* --- Suggested Features --- */
+#suggestedFeaturesList {
+    list-style: none;
+    padding-inline-start: 0px; /* Explicitly remove browser default padding */
+    margin-top: 0.5rem; /* Space below the header */
+    margin-bottom: 0.8rem; /* Space before the next section or element */
+}
+
+#suggestedFeaturesList li {
+    padding: 0.3rem 0; /* Adjusted padding */
+    margin-bottom: 0.3rem; /* Space between items */
+    font-size: 0.85rem; /* Slightly smaller text */
+    color: var(--text-color); /* Standard text color */
+    border-bottom: 1px dashed var(--border-color); /* Subtle separator */
+    /* Example: Add a hover effect if items become interactive */
+    /* cursor: pointer; */
+    /* transition: background-color 0.2s; */
+}
+
+/*
+#suggestedFeaturesList li:hover {
+    background-color: #e7f0fa;
+    color: var(--primary-color);
+}
+*/
+
+#suggestedFeaturesList li:last-child {
+    border-bottom: none; /* Remove border from the last item */
+    margin-bottom: 0;
 }
 
 /* --- Map --- */
@@ -572,11 +604,14 @@ input[type="text"].lot-name-input:focus {
     border-top: 1px solid var(--border-color);
 }
 
+/* Styles for .export-buttons-section h3 */
 .export-buttons-section h3 {
     font-size: 1rem;
+    font-weight: 500; /* Typical weight for h3 if h2 is 600 */
+    color: var(--primary-color);
     margin-top: 0;
     margin-bottom: 0.6rem;
-    color: var(--primary-color);
+    /* No border-bottom, to differentiate from h2 or per original design */
 }
 
 .btn-export {
@@ -797,6 +832,7 @@ button#exportKmzBtn.btn-export:hover {
 
 
     .sidebar-section h2,
+    .sidebar-section.suggested-features h2,
     .export-buttons-section h3 {
         font-size: 0.95rem;
     }
@@ -825,7 +861,7 @@ button#exportKmzBtn.btn-export:hover {
     #addLotBtnSidebar.btn,
     .btn-export {
         font-size: 0.825rem;
-        padding: 0.45rem 0.8rem;
+        padding: 0.4rem 0.7rem; /* Adjusted padding */
     }
 
     .survey-point-editor .point-headers,
@@ -897,5 +933,11 @@ button#exportKmzBtn.btn-export:hover {
     .survey-point-editor .survey-point-row select {
         font-size: 0.7rem;
         padding: 0.25rem 0.1rem;
+    }
+
+    #addLotBtnSidebar {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem; /* Adjusted from 0.8rem to ensure fit */
+        /* word-break: break-all; */ /* Not using word-break for now */
     }
 }
