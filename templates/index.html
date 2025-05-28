@@ -57,6 +57,35 @@
                         </select>
                         <small>Ensure point's coordinates are for selected CRS.</small>
                     </div>
+
+                    <h3 class="settings-subsection-header">Map Display Options</h3>
+                    <div class="input-group checkbox-group">
+                        <label for="toggleTieLines">
+                            <input type="checkbox" id="toggleTieLines" name="toggleTieLines" checked>
+                            Show Tie-Lines
+                        </label>
+                    </div>
+                    <div class="input-group checkbox-group">
+                        <label for="togglePobMarkers">
+                            <input type="checkbox" id="togglePobMarkers" name="togglePobMarkers" checked>
+                            Show POB Markers
+                        </label>
+                    </div>
+                    <div class="input-group checkbox-group">
+                        <label for="toggleParcelVertices">
+                            <input type="checkbox" id="toggleParcelVertices" name="toggleParcelVertices" checked>
+                            Show Parcel Vertices
+                        </label>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="basemapSelect">Basemap:</label>
+                        <select name="basemapSelect" id="basemapSelect" class="crs-select"> <!-- Re-use crs-select class for similar styling if appropriate -->
+                            <option value="esriImagery">Esri World Imagery (Default)</option>
+                            <option value="osmStandard">OpenStreetMap</option>
+                            <option value="esriStreet">Esri World Street Map</option>
+                        </select>
+                    </div>
                 </form>
             </section>
 
@@ -64,6 +93,7 @@
                 <h2>Survey Lots</h2>
                 <ul id="lotList"></ul>
                 <button type="button" id="addLotBtnSidebar" class="btn btn-success btn-block">+ Add New Lot</button>
+                <button type="button" id="clearAllLotsBtn" class="btn btn-danger btn-block">Clear All Lots</button>
             </section>
 
             <section class="sidebar-section export-buttons-section">
@@ -96,6 +126,10 @@
         const allReferencePointsData = JSON.parse({{ reference_points_data_json|tojson|safe }});
     </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p id="loadingMessage">Processing...</p>
+    </div>
 </body>
 
 </html>

@@ -33,9 +33,14 @@ from utils import (
     calculate_azimuth,
     calculate_new_coordinates,
     get_sanitized_filename_base,
-    parse_survey_line_to_bearing_distance
+    parse_survey_line_to_bearing_distance,
+    decimal_azimuth_to_bearing_string
 )
 
+# Area Conversion Constants
+# SQM_TO_SQFT = 10.7639 # Removed
+# SQM_TO_ACRES = 0.000247105 # Removed
+SQM_TO_HECTARES = 0.0001
 
 app = Flask(__name__)
 app.secret_key = 'your_very_secret_key_rizal_encoder_v13_csv_cache'  # TODO: Change in production
@@ -343,24 +348,66 @@ def _calculate_single_lot_geometry(
         
         current_e, current_n = next_e, next_n
     
+    # Calculate Misclosure (before auto-closing the polygon)
+    misclosure_distance_val = None
+    misclosure_azimuth_deg_val = None
+    misclosure_data_for_return = {
+        "distance_raw": None,
+        "azimuth_raw_deg": None
+        # Formatted strings will be added by the calling endpoint
+    }
+
+    if len(lot_proj_coords["parcel_boundary_ens"]) >= 2:
+        pob_en = lot_proj_coords["parcel_boundary_ens"][0]
+        actual_last_calculated_point_en = lot_proj_coords["parcel_boundary_ens"][-1]
+
+        delta_e = actual_last_calculated_point_en[0] - pob_en[0]
+        delta_n = actual_last_calculated_point_en[1] - pob_en[1]
+
+        misclosure_distance_val = math.sqrt(delta_e**2 + delta_n**2)
+        
+        misclosure_azimuth_rad = math.atan2(delta_e, delta_n)
+        misclosure_azimuth_deg_val = math.degrees(misclosure_azimuth_rad)
+        if misclosure_azimuth_deg_val < 0:
+            misclosure_azimuth_deg_val += 360.0
+        
+        misclosure_data_for_return["distance_raw"] = misclosure_distance_val
+        misclosure_data_for_return["azimuth_raw_deg"] = misclosure_azimuth_deg_val
+
     # Close the polygon if necessary
     parcel_ens = lot_proj_coords["parcel_boundary_ens"]
     parcel_latlngs = lot_latlon_coords["parcel_polygon_latlngs"]
 
     if len(parcel_ens) > 1 and parcel_ens[0] != parcel_ens[-1]:
-        parcel_ens.append(parcel_ens[0])
+        parcel_ens.append(parcel_ens[0]) # Close the projected coordinates
         if parcel_latlngs and len(parcel_latlngs) > 0 and \
            parcel_latlngs[0] != parcel_latlngs[-1]:
             # Ensure the first point's lat/lon is available before appending
             first_vertex_latlon = parcel_latlngs[0]
-            parcel_latlngs.append(first_vertex_latlon)
+            parcel_latlngs.append(first_vertex_latlon) # Close the lat/lon coordinates
+    
+    # Calculate Raw Area
+    raw_area_sqm = None
+    if len(parcel_ens) >= 4: # Need at least 3 unique points forming a closed polygon
+        try:
+            # parcel_ens should already be a list of (E,N) tuples
+            shapely_polygon = Polygon(parcel_ens)
+            if shapely_polygon.is_valid:
+                raw_area_sqm = shapely_polygon.area
+            else:
+                current_app.logger.warning(f"Lot '{lot_name}': Calculated polygon is not valid.")
+        except Exception as e:
+            current_app.logger.error(f"Lot '{lot_name}': Error calculating area: {str(e)}")
+            # raw_area_sqm remains None
             
     return {
         "status": "success",
         "lot_id": lot_id,
         "lot_name": lot_name,
         "projected": lot_proj_coords,
-        "latlon": lot_latlon_coords
+        "latlon": lot_latlon_coords,
+        "misclosure": misclosure_data_for_return,
+        "area_sqm_raw": raw_area_sqm # New key
     }
 
 
@@ -520,10 +567,39 @@ def calculate_plot_data_multi_endpoint():
             "lot_name": lot_name,
             "status": single_lot_result["status"],
             "message": single_lot_result.get("message"),
-            "plot_data": single_lot_result.get("latlon", {}) 
+            "plot_data": single_lot_result.get("latlon", {}),
+            "misclosure_raw": single_lot_result.get("misclosure", {"distance_raw": None, "azimuth_raw_deg": None}),
+            "area_sqm_raw": single_lot_result.get("area_sqm_raw") # Store raw area
         })
 
     overall_status = "success_with_errors" if any_lot_had_error else "success"
+    
+    # Post-process results to format misclosure and areas for frontend
+    for lot_result_item in results_per_lot:
+        # Format Misclosure
+        if lot_result_item["status"] == "success":
+            raw_misclosure = lot_result_item.pop("misclosure_raw", {}) 
+            formatted_misclosure = { "distance": None, "bearing": None }
+            if raw_misclosure.get("distance_raw") is not None:
+                formatted_misclosure["distance"] = f"{raw_misclosure['distance_raw']:.3f}m"
+            raw_azimuth_deg = raw_misclosure.get("azimuth_raw_deg")
+            formatted_misclosure["bearing"] = decimal_azimuth_to_bearing_string(raw_azimuth_deg)
+            lot_result_item["misclosure"] = formatted_misclosure
+        else:
+            lot_result_item["misclosure"] = { "distance": None, "bearing": None }
+
+        # Format Areas
+        raw_area_sqm = lot_result_item.pop("area_sqm_raw", None) # Remove raw area
+        formatted_areas = {"sqm": None, "hectares": None} # Simplified
+        if lot_result_item["status"] == "success" and raw_area_sqm is not None and isinstance(raw_area_sqm, (int, float)):
+            formatted_areas["sqm"] = f"{raw_area_sqm:.3f} sqm"
+            # area_sqft = raw_area_sqm * SQM_TO_SQFT # Removed
+            # formatted_areas["sqft"] = f"{area_sqft:.3f} sqft" # Removed
+            # area_acres = raw_area_sqm * SQM_TO_ACRES # Removed
+            # formatted_areas["acres"] = f"{area_acres:.4f} acres" # Removed
+            area_hectares = raw_area_sqm * SQM_TO_HECTARES
+            formatted_areas["hectares"] = f"{area_hectares:.4f} ha"
+        lot_result_item["areas"] = formatted_areas
 
     return jsonify({
         "status": overall_status, 

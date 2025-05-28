@@ -162,7 +162,7 @@ ul {
     position: absolute;
     top: 1rem;
     left: 1rem;
-    width: 430px;
+    width: 500px;
     max-width: calc(100% - 2rem);
     max-height: calc(100% - 2rem);
     background-color: var(--light-bg);
@@ -263,7 +263,7 @@ ul {
     overflow-y: auto;
     /* This element will scroll its content */
     overflow-x: hidden;
-    min-height: 150px; /* ADDED: Default minimum height for the editor area */
+    min-height: 200px; /* ADDED: Default minimum height for the editor area */
 }
 
 /* --- Form Elements & Controls --- */
@@ -476,8 +476,10 @@ input[type="text"].lot-name-input:focus {
 /* Column Definitions - Allow shrinking */
 .point-headers>span,
 .survey-point-row>* {
-    margin-right: 5px;
+    margin-right: 6px; /* Slightly increased for better spacing */
     box-sizing: border-box;
+    padding: 2px; /* Added small padding for content within flex items */
+    text-align: center; /* Center text for most items */
 }
 
 .point-headers>span:last-child,
@@ -487,7 +489,8 @@ input[type="text"].lot-name-input:focus {
 
 .header-label,
 .point-label {
-    flex: 1 1 70px;
+    flex: 0 0 65px; /* Fixed base, no grow, no shrink */
+    text-align: left; /* Label text aligned left */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -495,32 +498,32 @@ input[type="text"].lot-name-input:focus {
 
 .header-ns,
 .point-ns {
-    flex: 0 1 45px;
+    flex: 0 0 50px; /* Fixed base for N/S dropdowns */
 }
 
 .header-deg,
 .point-deg {
-    flex: 0 1 50px;
+    flex: 0 0 55px; /* Fixed base for Degree input */
 }
 
 .header-min,
 .point-min {
-    flex: 0 1 50px;
+    flex: 0 0 55px; /* Fixed base for Minute input */
 }
 
 .header-ew,
 .point-ew {
-    flex: 0 1 45px;
+    flex: 0 0 50px; /* Fixed base for E/W dropdowns */
 }
 
 .header-dist,
 .point-dist {
-    flex: 1 1 70px;
+    flex: 1 1 150px; /* Flexible: can grow, can shrink, base width significantly increased */
 }
 
 .header-action,
 .survey-point-row .btn-remove-point-container {
-    flex: 0 0 30px;
+    flex: 0 0 35px; /* Slightly more space for remove button */
     text-align: center;
 }
 
@@ -712,6 +715,42 @@ button#exportKmzBtn.btn-export:hover {
         max-width: calc(100% - 1rem);
         padding: 1rem;
     }
+}
+
+
+/* Loading Overlay Styles */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: none; /* Hidden by default */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* Ensure it's on top of other content */
+    color: white;
+    text-align: center;
+}
+
+.loading-overlay .loading-spinner {
+    border: 8px solid #f3f3f3; /* Light grey */
+    border-top: 8px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1.5s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+    font-size: 1.2em;
 }
 
 
