@@ -920,3 +920,123 @@ button#exportKmzBtn.btn-export:hover {
         margin: 0.5rem auto 0 auto; /* Further reduced top margin */
     }
 }
+
+/* --- Drag and Drop Map Overlay --- */
+#map.drag-over-map {
+    border: 3px dashed var(--primary-color); /* Use theme's primary color */
+    box-shadow: inset 0 0 40px rgba(74, 144, 226, 0.6); /* Adjusted alpha for theme */
+    /* Optional: Add a pseudo-element for an overlay message */
+}
+
+#map.drag-over-map::before {
+    content: 'Drop GeoJSON, DXF, or ZIP file here';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 1rem 2rem;
+    border-radius: var(--border-radius);
+    z-index: 10000; /* Ensure it's above map tiles but below editor if needed */
+}
+
+/* --- Uploaded Layers Manager --- */
+#uploadedLayersManagerSection {
+    /* padding: 1rem; Inherits from .sidebar-section if that class is used */
+    /* margin-bottom: 1rem; Inherits from .sidebar-section */
+    /* border-top: 1px solid var(--border-color); Add if needed for separation */
+}
+
+#uploadedLayersManagerSection h2 { /* Styles inherited from .sidebar-section h2 */
+    margin-bottom: 0.6rem; /* Slightly less margin for the list following it */
+}
+
+ul#uploadedLayersList {
+    list-style-type: none;
+    padding: 0;
+    margin: 0 0 0.5rem 0; /* Add some margin at the bottom */
+    max-height: 250px; /* Example max height */
+    overflow-y: auto; /* Scroll if content exceeds max height */
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: #fff; /* White background for the list itself */
+}
+
+.layer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem; /* Consistent padding */
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.875rem; /* Standardized font size */
+}
+
+.layer-item:last-child {
+    border-bottom: none; /* No border for the last item */
+}
+
+.layer-item .layer-name-display {
+    flex-grow: 1;
+    margin-right: 0.5rem; /* Spacing between name and controls */
+    color: var(--text-color); /* Standard text color */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Prevent long names from breaking layout */
+}
+
+.layer-item .layer-controls {
+    display: flex;
+    align-items: center; /* Vertically align buttons if they vary in height */
+    flex-shrink: 0; /* Prevent controls from shrinking */
+}
+
+.layer-item .layer-controls button {
+    background: none;
+    border: 1px solid #ccc; /* Light border for definition */
+    padding: 3px 7px; /* Adjust padding for a tighter look */
+    margin-left: 5px; /* Spacing between buttons */
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem; /* Slightly larger for emojis/icons if used as text */
+    line-height: 1.2; /* Ensure text/emoji is centered */
+    color: var(--secondary-color);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.layer-item .layer-controls button:hover {
+    background-color: #f0f0f0; /* Light hover effect */
+    border-color: #aaa; /* Darker border on hover */
+    color: var(--primary-color);
+}
+
+.layer-item .btn-layer-visibility.layer-hidden-icon::before {
+    content: '👁️'; /* Default visible icon */
+    opacity: 0.5; /* Dimmed when hidden */
+}
+.layer-item .btn-layer-visibility.layer-visible-icon::before {
+    content: '👁️'; /* Default visible icon */
+}
+
+
+/* Styling for when a layer is marked as hidden */
+.layer-item.layer-hidden .layer-name-display {
+    text-decoration: line-through;
+    color: #999; /* Dimmed color for the name */
+    font-style: italic;
+}
+
+/* Specific button state if needed, e.g., for visibility toggle */
+/* .layer-item .btn-layer-visibility.is-hidden {
+    opacity: 0.6;
+} */
+
+.empty-list-message {
+    text-align: center;
+    color: var(--text-muted); /* Use theme variable */
+    padding: 10px 0; /* Padding around the message */
+    font-size: 0.85rem; /* Slightly smaller font */
+    font-style: italic;
+}

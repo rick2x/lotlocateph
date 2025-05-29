@@ -32,6 +32,7 @@ $(document).ready(function () {
     let debounceTimeout;
     let messageFadeTimeoutId = null;
 
+    let uploadedGeodataLayers = {}; // For layers from ZIP upload
     let isEditorMinimized = false; // State for editor minimize/maximize
 
     // Basemap Persistence - Load
@@ -1164,7 +1165,427 @@ $(document).ready(function () {
         });
     });
 
+    const uploadedLayersListUL = $('#uploadedLayersList'); 
+    const noUploadedLayersMsg = $('#noUploadedLayersMessage');
+
     // Initial setup
     initMap();
     addLot(); // Start with one empty lot
+
+    // Initial state for "No Layers" message
+    if (uploadedLayersListUL.children().length === 0) {
+        noUploadedLayersMsg.show();
+    } else {
+        noUploadedLayersMsg.hide();
+    }
+
+    // --- Event Listener for Clearing Uploaded Layers ---
+    // This button was removed in the previous HTML step, will be re-added if functionality is merged later.
+    // For now, keeping it commented or removing if truly deprecated by new manager.
+    // Based on previous HTML changes, this button is gone. The new manager will have per-layer delete.
+    // $('#clearUploadedLayersBtn').on('click', function() { 
+    //     clearUploadedGeodataLayers(); 
+    // });
+
+    // --- Drag and Drop for ZIP files on Map ---
+    const mapContainer = document.getElementById('map');
+
+    // --- Uploaded Layer Manager Event Listeners ---
+    uploadedLayersListUL.on('click', '.btn-layer-visibility', function() {
+        const button = $(this);
+        const layerItem = button.closest('.layer-item');
+        const layerId = layerItem.data('layer-id'); // Get the layer ID (name)
+
+        if (!layerId || !uploadedGeodataLayers[layerId]) {
+            console.error('Layer or layer data not found for ID:', layerId);
+            return;
+        }
+
+        const leafletLayerGroup = uploadedGeodataLayers[layerId];
+
+        if (map.hasLayer(leafletLayerGroup)) {
+            map.removeLayer(leafletLayerGroup);
+            layerItem.addClass('layer-hidden');
+            // button.text('🙈'); // Using CSS classes for icons now
+            button.attr('title', 'Show Layer');
+            button.removeClass('layer-visible-icon').addClass('layer-hidden-icon'); 
+        } else {
+            map.addLayer(leafletLayerGroup);
+            layerItem.removeClass('layer-hidden');
+            // button.text('👁️'); // Using CSS classes for icons now
+            button.attr('title', 'Hide Layer');
+            button.removeClass('layer-hidden-icon').addClass('layer-visible-icon');
+        }
+    });
+
+    // Placeholder for Zoom and Delete functionality - to be implemented in next steps
+    uploadedLayersListUL.on('click', '.btn-layer-zoom', function() {
+        const button = $(this); // 'this' refers to the clicked button
+        const layerItem = button.closest('.layer-item');
+        const layerId = layerItem.data('layer-id');
+
+        if (!layerId || !uploadedGeodataLayers[layerId]) {
+            console.error('Layer or layer data not found for ID:', layerId);
+            displayMessage('error', 'Could not find layer data to zoom.');
+            return;
+        }
+
+        const leafletLayerGroup = uploadedGeodataLayers[layerId];
+
+        // If hidden, make it visible, then zoom.
+        if (!map.hasLayer(leafletLayerGroup)) {
+            map.addLayer(leafletLayerGroup);
+            // Update UI to reflect it's now visible
+            layerItem.removeClass('layer-hidden');
+            layerItem.find('.btn-layer-visibility') // Find the specific button
+                     .attr('title', 'Hide Layer')  // Update title
+                     .removeClass('layer-hidden-icon') // Update icon via CSS classes
+                     .addClass('layer-visible-icon');
+        }
+        
+        // Get bounds and fit map
+        try {
+            const bounds = leafletLayerGroup.getBounds();
+            if (bounds && bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
+            } else {
+                // This can happen if the layer is empty or contains only single points without a spread
+                displayMessage('info', `Layer '${layerId}' has no valid bounds to zoom to (it might be empty or contain only a single point).`);
+                const layersInGroup = leafletLayerGroup.getLayers();
+                if (layersInGroup.length === 1 && (layersInGroup[0] instanceof L.Marker || layersInGroup[0] instanceof L.CircleMarker)) {
+                    map.setView(layersInGroup[0].getLatLng(), 18); // Zoom to a fixed level for single points
+                }
+            }
+        } catch (e) {
+            console.error("Error getting bounds or zooming:", e);
+            displayMessage('error', `Could not zoom to layer '${layerId}'. It may not have plottable features.`);
+        }
+    });
+
+    uploadedLayersListUL.on('click', '.btn-layer-delete', function() {
+        // 'this' refers to the clicked button
+        const button = $(this);
+        const layerItem = button.closest('.layer-item');
+        const layerId = layerItem.data('layer-id');
+
+        if (!layerId) { // No layerId usually means something is wrong with the item
+            console.error('Could not identify layer to delete.');
+            displayMessage('error', 'Error identifying layer for deletion.');
+            return;
+        }
+
+        // Confirmation dialog
+        if (!confirm(`Are you sure you want to delete the layer: "${layerId}"? This action cannot be undone.`)) {
+            return; // User cancelled
+        }
+
+        // Check if the layer exists in our tracking object
+        if (uploadedGeodataLayers[layerId]) {
+            const leafletLayerGroup = uploadedGeodataLayers[layerId];
+            // Remove from map if it's currently there
+            if (map.hasLayer(leafletLayerGroup)) {
+                map.removeLayer(leafletLayerGroup);
+            }
+            // Delete from our tracking object
+            delete uploadedGeodataLayers[layerId];
+        } else {
+            // Layer might be in UI but not in JS objects (should not happen with current logic)
+            console.warn('Layer data not found in uploadedGeodataLayers for ID:', layerId, 'but attempting to remove UI item.');
+        }
+
+        // Remove the layer item from the UI list
+        layerItem.remove();
+
+        // Check if the list is now empty and show the "No layers" message if needed
+        // const uploadedLayersListUL = $('#uploadedLayersList'); // Already available globally
+        // const noUploadedLayersMsg = $('#noUploadedLayersMessage'); // Already available globally
+        if (uploadedLayersListUL.children().length === 0) {
+            noUploadedLayersMsg.show();
+        } else {
+            noUploadedLayersMsg.hide();
+        }
+
+        displayMessage('info', `Layer "${layerId}" has been deleted.`);
+    });
+
+
+    if (mapContainer) {
+        mapContainer.addEventListener('dragenter', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            mapContainer.classList.add('drag-over-map');
+        });
+
+        mapContainer.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.stopPropagation(); // Necessary to allow dropping
+        });
+
+        mapContainer.addEventListener('dragleave', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Check if the leave target is outside the map container or its children
+            // This helps prevent flickering when dragging over child elements in the map
+            if (e.target === mapContainer || !mapContainer.contains(e.relatedTarget)) {
+                mapContainer.classList.remove('drag-over-map');
+            }
+        });
+
+        mapContainer.addEventListener('drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            mapContainer.classList.remove('drag-over-map');
+
+            const files = e.dataTransfer.files;
+            if (!files || files.length === 0) {
+                displayMessage('warning', 'No files were dropped.');
+                return;
+            }
+            const file = files[0]; // Process only the first file
+            const fileNameLower = file.name.toLowerCase();
+
+            let endpoint = '';
+            let formDataKey = '';
+
+            if (fileNameLower.endsWith('.geojson')) {
+                endpoint = '/api/upload_geojson_file';
+                formDataKey = 'geojsonfile';
+            } else if (fileNameLower.endsWith('.dxf')) {
+                endpoint = '/api/upload_dxf_file';
+                formDataKey = 'dxffile';
+
+                const selectedCRS = $('#target_crs_select').val();
+                if (!selectedCRS) {
+                    displayMessage('error', 'A Target CRS must be selected in Global Settings to process DXF files accurately. Please select a CRS and try again.');
+                    // No need to remove 'drag-over-map' as it's already removed at the start of the drop handler.
+                    // No need to hideLoading() here as it hasn't been called yet for this path.
+                    return; // Stop the upload
+                }
+                // formData will be initialized after this block before appending.
+            } else if (fileNameLower.endsWith('.zip')) {
+                endpoint = '/api/upload_geospatial_zip'; // For Shapefiles (which are inside ZIP)
+                formDataKey = 'zipfile';
+            } else {
+                displayMessage('error', 'Unsupported file type. Please drop a .geojson, .dxf, or .zip file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append(formDataKey, file, file.name);
+
+            // Append source_crs_epsg specifically for DXF files
+            if (formDataKey === 'dxffile') {
+                const selectedCRS = $('#target_crs_select').val(); // Re-fetch in case it was changed, though unlikely
+                formData.append('source_crs_epsg', selectedCRS);
+            }
+
+            showLoading('Uploading and processing file...');
+
+            fetch(endpoint, { // Use the determined endpoint
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.status === 'success') {
+                    displayMessage('info', data.message || 'File processed successfully. Plotting data...');
+                    if (data.layers && data.layers.length > 0) {
+                        plotUploadedGeospatialData(data.layers);
+                    } else {
+                        // This case might occur if a valid file type is sent but contains no plottable data
+                        // or if the success message from backend indicates no layers.
+                        displayMessage('info', data.message || 'No plottable layers found in the file.');
+                        clearUploadedGeodataLayers(); // Clear any existing uploaded layers
+                    }
+                } else {
+                    displayMessage('error', `Processing failed: ${data.message || 'Unknown error'}`);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Upload Error:', error);
+                displayMessage('error', `Upload failed: ${error.message || 'Network error or server unavailable'}`);
+            });
+        });
+    } else {
+        console.error("Map container with ID 'map' not found for drag-drop setup.");
+    }
+
+    function clearUploadedGeodataLayers() {
+        if (map && uploadedGeodataLayers) {
+            let count = 0;
+            for (const layerName in uploadedGeodataLayers) {
+                if (uploadedGeodataLayers.hasOwnProperty(layerName) && uploadedGeodataLayers[layerName]) {
+                    if (map.hasLayer(uploadedGeodataLayers[layerName])) {
+                        map.removeLayer(uploadedGeodataLayers[layerName]);
+                        count++;
+                    }
+                }
+            }
+            uploadedGeodataLayers = {};
+            // Clear UI list as well when clearing all layers
+            uploadedLayersListUL.empty(); 
+            if (count > 0) {
+                displayMessage('info', 'All uploaded map layers have been cleared.');
+            } else {
+                displayMessage('info', 'No uploaded map layers to clear.');
+            }
+        } else {
+            uploadedGeodataLayers = {};
+            uploadedLayersListUL.empty();
+            displayMessage('info', 'No uploaded map layers to clear.');
+        }
+        // Update "no layers" message visibility
+        if (uploadedLayersListUL.children().length === 0) {
+            noUploadedLayersMsg.show();
+        } else {
+            noUploadedLayersMsg.hide();
+        }
+    }
+
+    function plotUploadedGeospatialData(layers) {
+        if (!map) {
+            console.error("Map is not initialized. Cannot plot uploaded data.");
+            return;
+        }
+
+        clearUploadedGeodataLayers(); // Clear previous layers from map and the JS object
+        uploadedLayersListUL.empty(); // Clear previous list items from the UI
+
+        let allNewBounds = L.latLngBounds([]);
+
+        layers.forEach((layerData, layerIndex) => { // Renamed 'layers' to 'layerData' for clarity
+            if (!layerData.features || layerData.features.length === 0) {
+                return;
+            }
+
+            const layerName = layerData.name;
+            const sanitizedLayerName = $('<div>').text(layerName).html(); // Sanitize for display
+
+            const layerItemHTML = `
+                <li class="layer-item" data-layer-id="${sanitizedLayerName}">
+                    <span class="layer-name-display">${sanitizedLayerName}</span>
+                    <div class="layer-controls">
+                        <button class="btn-layer-visibility layer-visible-icon" title="Toggle Visibility">👁️</button> 
+                        <button class="btn-layer-zoom" title="Zoom to Layer">🔍</button>
+                        <button class="btn-layer-delete" title="Delete Layer">🗑️</button>
+                    </div>
+                </li>
+            `;
+            uploadedLayersListUL.append(layerItemHTML);
+            
+            const layerGroup = L.featureGroup();
+
+            const geoJsonLayer = L.geoJSON(layerData.features, { // Use layerData.features
+                style: function (feature) {
+                    let styleOptions = {
+                        weight: 2,
+                        opacity: 0.85,
+                        fillOpacity: 0.3
+                    };
+                    if (layerData.type === 'vector-dxf') {
+                        styleOptions.color = '#A020F0'; // Purple for DXF entities
+                        styleOptions.fillColor = '#A020F0';
+                        if (feature.geometry.type === 'Point') {
+                            styleOptions.radius = 3; // Default radius for DXF points (used by L.circleMarker)
+                        }
+                    } else {
+                        // Existing logic for GeoJSON/Shapefile layers
+                        const colorIndex = layers.indexOf(layerData) % lotColors.length;
+                        styleOptions.color = lotColors[colorIndex];
+                        styleOptions.fillColor = lotColors[colorIndex];
+                    }
+                    return styleOptions;
+                },
+                pointToLayer: function (feature, latlng) {
+                    if (layerData.type === 'vector-dxf' && feature.geometry.type === 'Point') {
+                        // Use circleMarker for DXF points, style is applied by the 'style' function
+                        return L.circleMarker(latlng); 
+                    }
+                    // Default marker for non-DXF points or if not customizing
+                    return L.marker(latlng); 
+                },
+                onEachFeature: function (feature, leafletLayer) {
+                    if (feature.properties) {
+                        let popupContent = `<div class="geojson-popup"><strong>Layer: ${layerData.name}</strong>`;
+                        if (layerData.type === 'vector-dxf') {
+                            popupContent += `<br><strong>Type:</strong> ${feature.properties.dxf_entity_type || 'DXF Entity'}`;
+                            if (feature.properties.layer) {
+                                popupContent += `<br><strong>DXF Layer:</strong> ${feature.properties.layer}`;
+                            }
+                            if (feature.properties.text) {
+                                const textValue = String(feature.properties.text).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                                popupContent += `<br><strong>Text:</strong> ${textValue}`;
+                            }
+                            if (feature.properties.radius !== undefined) { // Check for undefined as radius can be 0
+                                popupContent += `<br><strong>Radius:</strong> ${Number(feature.properties.radius).toFixed(3)}`;
+                            }
+                            
+                            let genericPropsCount = 0;
+                            const dxfHandledProps = ['dxf_entity_type', 'layer', 'text', 'radius'];
+                            for (const key in feature.properties) {
+                                if (dxfHandledProps.includes(key)) continue;
+                                
+                                if (genericPropsCount < 5 && feature.properties[key] !== null && feature.properties[key] !== undefined) {
+                                     const valueStr = String(feature.properties[key]).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                                     popupContent += `<br><strong>${key.replace(/</g, "&lt;").replace(/>/g, "&gt;")}:</strong> ${valueStr}`;
+                                     genericPropsCount++;
+                                } else if (genericPropsCount >= 5) {
+                                    popupContent += `<br>...and more properties`;
+                                    break;
+                                }
+                            }
+                        } else {
+                            // Existing property display logic for GeoJSON/Shapefile features
+                            let propCount = 0;
+                            const maxPropsToShow = 10;
+                            for (const key in feature.properties) {
+                                if (propCount >= maxPropsToShow) {
+                                    popupContent += `<br>...and more properties`;
+                                    break;
+                                }
+                                let value = feature.properties[key];
+                                const valueStr = String(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                                popupContent += `<br><strong>${key.replace(/</g, "&lt;").replace(/>/g, "&gt;")}:</strong> ${valueStr}`;
+                                propCount++;
+                            }
+                        }
+                        popupContent += `</div>`;
+                        leafletLayer.bindPopup(popupContent);
+                    }
+                }
+            });
+
+            geoJsonLayer.addTo(layerGroup);
+            layerGroup.addTo(map);
+            uploadedGeodataLayers[layerData.name] = layerGroup;
+
+            // Extend the bounds with the bounds of the current layer group
+            if (layerGroup.getLayers().length > 0) { // Check if layerGroup has any layers
+                 try {
+                    const groupBounds = layerGroup.getBounds();
+                    if (groupBounds && groupBounds.isValid()) {
+                         allNewBounds.extend(groupBounds);
+                    }
+                } catch (e) {
+                    console.warn(`Could not get bounds for layer ${layerData.name}: ${e.message}`);
+                }
+            }
+            console.log(`Added layer "${layerData.name}" to map with ${layerData.features.length} features.`);
+        });
+
+        if (allNewBounds.isValid()) {
+            map.fitBounds(allNewBounds, { padding: [50, 50], maxZoom: 18 });
+        } else if (layers.length > 0) { // Check against original 'layers' array from function arg
+            console.warn("Could not determine valid bounds to fit all uploaded layers. Map view unchanged.");
+        }
+
+        // Update "no layers" message visibility after adding new items
+        if (uploadedLayersListUL.children().length === 0) {
+            noUploadedLayersMsg.show();
+        } else {
+            noUploadedLayersMsg.hide();
+        }
+    }
 });

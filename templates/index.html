@@ -96,6 +96,14 @@
                 <button type="button" id="clearAllLotsBtn" class="btn btn-danger btn-block">Clear All Lots</button>
             </section>
 
+            <section class="sidebar-section" id="uploadedLayersManagerSection">
+                <h2>Uploaded Layers</h2>
+                <ul id="uploadedLayersList" class="layer-manager-list">
+                    <!-- Layer items will be dynamically inserted here by JavaScript -->
+                </ul>
+                <p id="noUploadedLayersMessage" class="empty-list-message">No layers uploaded yet.</p> 
+            </section>
+
             <section class="sidebar-section export-buttons-section">
                 <h3>Export Options</h3>
                 <button type="button" id="exportShapefileBtn" class="btn btn-export">Export Shapefiles (.zip)</button>
