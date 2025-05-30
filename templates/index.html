@@ -96,12 +96,39 @@
                 <button type="button" id="clearAllLotsBtn" class="btn btn-danger btn-block">Clear All Lots</button>
             </section>
 
-            <section class="sidebar-section" id="uploadedLayersManagerSection">
-                <h2>Uploaded Layers</h2>
-                <ul id="uploadedLayersList" class="layer-manager-list">
-                    <!-- Layer items will be dynamically inserted here by JavaScript -->
-                </ul>
-                <p id="noUploadedLayersMessage" class="empty-list-message">No layers uploaded yet.</p> 
+            <section class="sidebar-section survey-management">
+                <h2>Survey Management</h2>
+                <div id="activeSaveStatusContainer" style="padding: 5px 10px; background-color: #e9ecef; margin-bottom: 10px; border-radius: 4px; text-align: center; border: 1px solid #ced4da;">
+                    <span style="font-weight: bold; font-size: 0.8rem; color: #495057;">Current Save:</span> <span id="activeSaveNameDisplay" style="font-size: 0.8rem; color: #007bff; font-weight:500;">Default Survey</span>
+                </div>
+                <div class="input-group">
+                    <button type="button" id="saveSurveyBtn" class="btn btn-primary btn-block">Save Current Survey</button>
+                </div>
+                <div class="input-group">
+                    <button type="button" id="saveAsSurveyBtn" class="btn btn-info btn-block">Save As...</button>
+                </div>
+                <div class="input-group">
+                    <label for="savedSurveysDropdown">Load a saved survey:</label>
+                    <select id="savedSurveysDropdown" class="crs-select">
+                        <option value="" disabled selected>Select a survey...</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <button type="button" id="loadSelectedSurveyBtn" class="btn btn-success btn-block" disabled>Load Selected Survey</button>
+                </div>
+                <div class="input-group">
+                    <button type="button" id="deleteSelectedSurveyBtn" class="btn btn-warning btn-block" disabled>Delete Selected Survey</button>
+                </div>
+                <div class="input-group">
+                    <button type="button" id="exportSurveyDataBtn" class="btn btn-info btn-block">Export Survey Data (.llph)</button>
+                </div>
+                <div class="input-group">
+                    <input type="file" id="importSurveyFile" accept=".llph,.json" style="display: none;">
+                    <button type="button" id="importSurveyDataBtn" class="btn btn-success btn-block">Import Survey Data</button>
+                </div>
+                <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #ccc;">
+                    <button id="resetApplicationDataBtn" class="btn btn-danger btn-block">Reset All Application Data</button>
+                </div>
             </section>
 
             <section class="sidebar-section export-buttons-section">

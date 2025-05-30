@@ -1,5 +1,14 @@
 
 $(document).ready(function () {
+    // Constants for LocalStorage Keys
+    const DEFAULT_SAVE_KEY = 'surveyLotsStore_default';
+    const NAMED_SAVES_INDEX_KEY = 'surveyLotsStore_namedSavesIndex';
+
+    let isLocalStorageAvailable = true; // Assume available until checked
+    let hasUnsavedChanges = false; // Flag for unsaved changes indicator
+
+    window.currentLoadedSaveName = null; // Track the currently loaded named save
+
     const primeSymbol = '′';
     const lotListUL = $('#lotList');
     const activeLotEditorArea = $('#activeLotEditorArea');
@@ -31,13 +40,124 @@ $(document).ready(function () {
     let currentModifiedMainRefEN = null; // Stores { easting: <value>, northing: <value> } for dragged ref point
     let debounceTimeout;
     let messageFadeTimeoutId = null;
+    let loadingOverlayTimerId = null; // Timer ID for the loading overlay
+    const LOADING_OVERLAY_DELAY = 300; // milliseconds (e.g., 300ms)
 
-    let uploadedGeodataLayers = {}; // For layers from ZIP upload
     let isEditorMinimized = false; // State for editor minimize/maximize
 
     // Basemap Persistence - Load
-    let initialBasemapKey = localStorage.getItem('selectedBasemap') || 'esriImagery'; // Default to 'esriImagery'
-    $('#basemapSelect').val(initialBasemapKey); // Set dropdown to reflect loaded/default choice
+    // let initialBasemapKey = localStorage.getItem('selectedBasemap') || 'esriImagery'; // Default to 'esriImagery'
+    // Will be replaced by safeLocalStorageGet
+    // $('#basemapSelect').val(initialBasemapKey); // Set dropdown to reflect loaded/default choice
+
+    // --- LocalStorage Availability Check ---
+    function checkLocalStorageAvailability() {
+        const testKey = '__localStorageTest__';
+        try {
+            localStorage.setItem(testKey, testKey);
+            localStorage.removeItem(testKey);
+            return true; 
+        } catch (e) {
+            return false; 
+        }
+    }
+
+    isLocalStorageAvailable = checkLocalStorageAvailability(); // Set the global flag
+
+    // --- Safe LocalStorage Utilities ---
+    function safeLocalStorageSet(key, value) {
+        if (!isLocalStorageAvailable) {
+            // displayMessage('error', 'Browser storage is unavailable. Cannot save data.'); // Main warning at startup
+            return false;
+        }
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.error(`QuotaExceededError for localStorage item ${key}:`, e);
+                displayMessage('error', 'Error saving data: Browser storage quota exceeded. Please free up space by deleting old saves or other browser data, then try again.', 0); // Non-fading
+            } else {
+                console.error(`Error setting localStorage item ${key}:`, e);
+                displayMessage('error', 'Error saving data: Local storage might be full or unavailable. Please check browser settings or free up space.');
+            }
+            return false;
+        }
+    }
+
+    function safeLocalStorageGet(key) {
+        if (!isLocalStorageAvailable) {
+            return null; 
+        }
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.error(`Error getting localStorage item ${key}:`, e);
+            displayMessage('error', 'Error retrieving data: Local storage might be unavailable.');
+            return null; 
+        }
+    }
+
+    function safeLocalStorageRemove(key) {
+        if (!isLocalStorageAvailable) {
+            return false;
+        }
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch (e) {
+            console.error(`Error removing localStorage item ${key}:`, e);
+            displayMessage('error', 'Error removing data: Local storage might be unavailable.');
+            return false;
+        }
+    }
+
+    function safeLocalStorageGetJson(key, defaultValue = null) {
+        if (!isLocalStorageAvailable) {
+            return defaultValue;
+        }
+        const item = safeLocalStorageGet(key); // This already checks isLocalStorageAvailable
+        if (item === null) { 
+            return defaultValue;
+        }
+        try {
+            return JSON.parse(item);
+        } catch (e) {
+            console.error(`Error parsing JSON for localStorage item ${key}:`, e);
+            displayMessage('error', `Error: Data for '${key}' appears to be corrupted. Please try resetting or re-saving.`);
+            return defaultValue;
+        }
+    }
+
+    // Basemap Persistence - Load (using safe utility)
+    let initialBasemapKey = 'esriImagery'; // Default value if localStorage is not available
+    if (isLocalStorageAvailable) {
+        initialBasemapKey = safeLocalStorageGet('selectedBasemap') || 'esriImagery';
+    }
+    $('#basemapSelect').val(initialBasemapKey);
+
+    // --- UI Update Functions ---
+    function updateActiveSaveStatusDisplay() {
+        const statusDisplay = $('#activeSaveNameDisplay');
+        let displayName = 'Default Survey';
+        let isNamed = false;
+
+        if (window.currentLoadedSaveName) {
+            displayName = window.currentLoadedSaveName;
+            isNamed = true;
+        }
+
+        if (hasUnsavedChanges) {
+            displayName += '*';
+        }
+        statusDisplay.text(displayName);
+
+        if (isNamed) {
+            statusDisplay.closest('#activeSaveStatusContainer').css('background-color', '#d4edda'); // Light green for named
+        } else {
+            statusDisplay.closest('#activeSaveStatusContainer').css('background-color', '#e9ecef'); // Default grey
+        }
+    }
 
     // --- INITIALIZATION ---
 
@@ -82,7 +202,7 @@ $(document).ready(function () {
     $('#basemapSelect').on('change', function() {
         const selectedKey = $(this).val();
         updateBasemap(selectedKey);
-        localStorage.setItem('selectedBasemap', selectedKey); // Basemap Persistence - Save
+        safeLocalStorageSet('selectedBasemap', selectedKey); // Basemap Persistence - Save
     });
 
     if (typeof $.fn.select2 === 'function') {
@@ -99,7 +219,7 @@ $(document).ready(function () {
     }
 
     $('#target_crs_select').on('change', function() {
-        localStorage.setItem('selectedCRS', $(this).val());
+        safeLocalStorageSet('selectedCRS', $(this).val());
         triggerMapUpdateWithDebounce();
     });
 
@@ -113,7 +233,10 @@ $(document).ready(function () {
     });
 
     // Load and apply saved CRS from LocalStorage
-    const savedCRS = localStorage.getItem('selectedCRS');
+    let savedCRS = null;
+    if (isLocalStorageAvailable) {
+        savedCRS = safeLocalStorageGet('selectedCRS');
+    }
     if (savedCRS) {
         $('#target_crs_select').val(savedCRS);
         // Trigger change to apply the loaded CRS and update map/UI accordingly
@@ -121,6 +244,41 @@ $(document).ready(function () {
     }
 
     // --- DATA MANAGEMENT & PREVIEW ---
+
+    function validateSurveyDataObject(dataObject, sourceName = 'loaded/imported data') {
+        if (typeof dataObject !== 'object' || dataObject === null) {
+            console.error(`Validation failed for ${sourceName}: Data is not an object.`);
+            return false;
+        }
+
+        for (const key in dataObject) {
+            if (dataObject.hasOwnProperty(key)) {
+                const lot = dataObject[key];
+                if (typeof lot !== 'object' || lot === null) {
+                    console.error(`Validation failed for ${sourceName}: Lot '${key}' is not an object.`);
+                    return false;
+                }
+                if (typeof lot.id !== 'string') {
+                    console.error(`Validation failed for ${sourceName}, Lot '${key}': Property 'id' is not a string.`);
+                    return false;
+                }
+                if (typeof lot.name !== 'string') {
+                    console.error(`Validation failed for ${sourceName}, Lot '${key}': Property 'name' is not a string.`);
+                    return false;
+                }
+                if (typeof lot.lines_text !== 'string') {
+                    console.error(`Validation failed for ${sourceName}, Lot '${key}': Property 'lines_text' is not a string.`);
+                    return false;
+                }
+                if (typeof lot.num !== 'number') {
+                    console.error(`Validation failed for ${sourceName}, Lot '${key}': Property 'num' is not a number.`);
+                    return false;
+                }
+                // Optional: Basic lines_text format check (omitted for now as per instructions)
+            }
+        }
+        return true; // All checks passed
+    }
 
     function formatDataLine(ns, deg, min, ew, dist) {
         const degStr = String(deg).padStart(2, '0');
@@ -169,36 +327,293 @@ $(document).ready(function () {
             }
         });
         surveyLotsStore[activeLotId].lines_text = dataLines.join('\n');
+        
+        hasUnsavedChanges = true; 
+        updateActiveSaveStatusDisplay(); 
+
+        if (activeLotId) {
+            // Autosave the current state (default or named context) after persisting UI changes.
+            saveCurrentSurvey(window.currentLoadedSaveName || undefined, false); // isSaveAs is false for autosaves
+        }
+    }
+
+    // Saves the current state of the global surveyLotsStore to localStorage.
+    // If 'name' is provided, it's a "Save As" operation or saving a newly imported named survey.
+    // If 'name' is undefined/null, it saves to the default key AND updates the currently loaded named save if one is active.
+    function saveCurrentSurvey(name, isSaveAs = false) {
+        // DO NOT call persistActiveLotData() here to prevent recursion.
+        // surveyLotsStore is assumed to be up-to-date by the caller.
+
+        // Removed the try...catch block that was here.
+        if (name) { // Saving to a named key (either new "Save As" or updating an existing named save)
+            const saveKey = `surveyLotsStore_data_${name}`;
+                let namedSavesIndex = safeLocalStorageGetJson(NAMED_SAVES_INDEX_KEY, {});
+
+                // Only ask for overwrite confirmation if it's an explicit "Save As" operation 
+                // AND the name already exists.
+                // Check both actual storage item and index for robustness
+                if (isSaveAs && (safeLocalStorageGet(saveKey) !== null || namedSavesIndex[name])) {
+                    if (!confirm(`A survey named "${name}" already exists. Overwrite it?`)) {
+                        displayMessage('info', `Save As for "${name}" cancelled.`);
+                        if (window.currentLoadedSaveName) {
+                             populateNamedSavesDropdown(); 
+                        } else {
+                            $('#savedSurveysDropdown').val(''); 
+                        }
+                        return; 
+                    }
+                }
+                // Proceed to save/overwrite
+                let overallSaveSuccess = true;
+
+                if (!safeLocalStorageSet(saveKey, JSON.stringify(surveyLotsStore))) {
+                    overallSaveSuccess = false;
+                }
+                
+                namedSavesIndex[name] = true; // Add/update in index
+                if (!safeLocalStorageSet(NAMED_SAVES_INDEX_KEY, JSON.stringify(namedSavesIndex))) {
+                    overallSaveSuccess = false;
+                }
+                
+                // Also update the default save with this named save's content
+                if (!safeLocalStorageSet(DEFAULT_SAVE_KEY, JSON.stringify(surveyLotsStore))) {
+                    overallSaveSuccess = false;
+                }
+
+                if (overallSaveSuccess) {
+                    window.currentLoadedSaveName = name; // Set this as the active context
+                    hasUnsavedChanges = false;
+                    if (isSaveAs) {
+                        displayMessage('success', `Survey saved as "${name}" (and updated as current default).`);
+                    } else {
+                        // This case is when saveCurrentSurvey is called with a name, but not as a 'Save As'
+                        // e.g. autosaving an already named survey.
+                        displayMessage('success', `Survey "${name}" updated (and default save also updated).`);
+                    }
+                } else {
+                    // Message for partial failure might be complex, for now, generic or rely on individual safeSet messages
+                    displayMessage('error', `Failed to fully save "${name}". Check console for details.`);
+                }
+                populateNamedSavesDropdown(); // Refresh dropdown to reflect new/updated save
+
+            } else { // When name is null/undefined (default save context or autosaving current context)
+                let overallSaveSuccess = true;
+                if (!safeLocalStorageSet(DEFAULT_SAVE_KEY, JSON.stringify(surveyLotsStore))) {
+                    overallSaveSuccess = false;
+                }
+
+                // If a named save is currently active, update that too
+                if (window.currentLoadedSaveName) { 
+                    const currentNamedSaveKey = `surveyLotsStore_data_${window.currentLoadedSaveName}`;
+                    if (!safeLocalStorageSet(currentNamedSaveKey, JSON.stringify(surveyLotsStore))) {
+                        overallSaveSuccess = false;
+                    }
+                }
+
+                if (overallSaveSuccess) {
+                    hasUnsavedChanges = false;
+                    if (window.currentLoadedSaveName) { 
+                        displayMessage('success', `Survey "${window.currentLoadedSaveName}" and default save updated.`);
+                    } else {
+                        displayMessage('success', 'Survey saved to default.');
+                    }
+                } else {
+                    displayMessage('error', `Failed to fully save current survey. Check console for details.`);
+                }
+            }
+        updateActiveSaveStatusDisplay(); // Update display after any save operation
+    }
+
+    function populateNamedSavesDropdown() {
+        const dropdown = $('#savedSurveysDropdown');
+        const currentlySelected = dropdown.val(); 
+        dropdown.empty().append('<option value="" disabled selected>Select a survey...</option>'); 
+
+        const namedSavesIndex = safeLocalStorageGetJson(NAMED_SAVES_INDEX_KEY, {});
+        const names = Object.keys(namedSavesIndex);
+        if (names.length === 0) {
+                dropdown.append('<option value="" disabled>No saved surveys yet.</option>');
+            } else {
+                names.sort().forEach(name => {
+                    dropdown.append($('<option>', {
+                        value: name,
+                        text: name
+                    }));
+                });
+            }
+            // Try to reselect previous value, or set to current loaded if available
+            if (window.currentLoadedSaveName && names.includes(window.currentLoadedSaveName)) {
+                 dropdown.val(window.currentLoadedSaveName);
+            } else if (currentlySelected && names.includes(currentlySelected)) {
+                dropdown.val(currentlySelected);
+            } else {
+                dropdown.val(""); // Default to placeholder
+            }
+        // Error messages are handled by safeLocalStorageGetJson if issues occur during its execution.
+        // The orphaned catch block that was here has been removed.
+        // Trigger change to update button states if needed
+        dropdown.trigger('change');
+    }
+
+    function deleteSurvey(name) {
+        if (!name) {
+            displayMessage('error', 'No survey name provided for deletion.');
+            return;
+        }
+
+        safeLocalStorageRemove(`surveyLotsStore_data_${name}`);
+        let namedSavesIndex = safeLocalStorageGetJson(NAMED_SAVES_INDEX_KEY, {});
+        if (namedSavesIndex && namedSavesIndex[name]) { // Check if index and name exist before delete
+            delete namedSavesIndex[name];
+            safeLocalStorageSet(NAMED_SAVES_INDEX_KEY, JSON.stringify(namedSavesIndex));
+        }
+        populateNamedSavesDropdown(); 
+
+            if (window.currentLoadedSaveName === name) {
+                window.currentLoadedSaveName = null;
+                // Optionally, load default or clear workspace
+                displayMessage('info', `Deleted survey "${name}". Active survey cleared. Loading default if available.`);
+                loadSurvey(DEFAULT_SAVE_KEY); // Load default, which will call updateActiveSaveStatusDisplay
+            } else {
+                displayMessage('success', `Survey "${name}" deleted successfully.`);
+                // Status display doesn't change if a non-active survey was deleted
+            }
+        // No specific catch here as safe utils handle their errors.
+        // updateActiveSaveStatusDisplay() will be called by loadSurvey if it's invoked.
     }
 
     // --- LOT MANAGEMENT UI (MASTER-DETAIL) ---
+
+    function loadSurvey(name) {
+        let surveyDataToLoad = null;
+        let sourceDescription = '';
+        
+        if (name) { // Load a named survey
+            sourceDescription = `Named Save '${name}'`;
+            surveyDataToLoad = safeLocalStorageGetJson(`surveyLotsStore_data_${name}`);
+        } else { // Load default survey
+            sourceDescription = 'Default Survey';
+            surveyDataToLoad = safeLocalStorageGetJson(DEFAULT_SAVE_KEY);
+        }
+
+        if (surveyDataToLoad) {
+            if (!validateSurveyDataObject(surveyDataToLoad, sourceDescription)) {
+                displayMessage('error', `Data for '${sourceDescription}' is invalid or corrupted and cannot be loaded.`);
+                surveyDataToLoad = null; // Prevent use of corrupted data
+                // If it's a named save that's corrupt, we might want to offer to remove it
+                // if (name) { 
+                //     if (confirm(`The named save '${name}' is corrupted. Would you like to remove it?`)) {
+                //         deleteSurvey(name); // This will also refresh dropdown and load default
+                //     }
+                // }
+                // If it's the default survey that's corrupt, loadSurvey(null) will be called effectively,
+                // which leads to addLot() if surveyLotsStore is empty.
+            }
+        }
+
+        if (surveyDataToLoad) { // Re-check surveyDataToLoad as it might have been nulled by validation
+            surveyLotsStore = surveyDataToLoad;
+            window.currentLoadedSaveName = (name && name !== DEFAULT_SAVE_KEY) ? name : null; 
+            
+            // Refresh UI - This is a critical part and needs to correctly reset and repopulate
+                lotListUL.empty();
+                activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">Select a lot from the list or add a new one to start editing.</div>').addClass('placeholder');
+                activeLotId = null;
+                lotCounter = 0; // Reset counter, will be updated by re-adding lots
+
+                let firstLotId = null;
+                let maxLotNum = 0;
+
+                if (Object.keys(surveyLotsStore).length > 0) {
+                    for (const lotId in surveyLotsStore) {
+                        if (surveyLotsStore.hasOwnProperty(lotId)) {
+                            const lotData = surveyLotsStore[lotId];
+                            const lotNum = lotData.num || (parseInt(lotId.split('_')[1],10) || ++maxLotNum);
+                            maxLotNum = Math.max(maxLotNum, lotNum);
+
+                            const listItemHTML = `<li data-lot-id="${lotId}">` +
+                                                `<span class="lot-name-display">${$('<div/>').text(lotData.name).html()}</span>` +
+                                                `<button class="btn-remove-lot-list" title="Remove ${$('<div/>').text(lotData.name).html()}">×</button>` +
+                                             `</li>`;
+                            lotListUL.append(listItemHTML);
+                            if (!firstLotId) firstLotId = lotId;
+
+                            // Ensure feature groups are ready for plotting
+                            if (map && !plottedFeatureGroups[lotId]) {
+                                plottedFeatureGroups[lotId] = L.featureGroup().addTo(map);
+                            } else if (map && plottedFeatureGroups[lotId]) {
+                                plottedFeatureGroups[lotId].clearLayers(); // Clear existing layers if any
+                            }
+                        }
+                    }
+                    lotCounter = maxLotNum; // Set lotCounter to the highest existing lot number
+                    if (firstLotId) {
+                        setActiveLot(firstLotId); // This will also render the editor
+                    }
+                } else { // No lots in the loaded data, effectively a clear state
+                    addLot(); // Add a fresh "Lot 1"
+                }
+                
+                populateNamedSavesDropdown(); // Refresh dropdown to show current selection
+                triggerMapUpdateWithDebounce(); // Update map with loaded data
+                if (name && name !== DEFAULT_SAVE_KEY) {
+                    displayMessage('success', `Survey "${name}" loaded.`);
+                } else if (name === DEFAULT_SAVE_KEY) {
+                     displayMessage('info', `Default survey data loaded.`);
+                } else {
+                     // Initial load, no specific user action, maybe no message or a subtle one
+                }
+
+            } else {
+                if (name && name !== DEFAULT_SAVE_KEY) { // Specific named survey not found
+                    displayMessage('error', `Could not find saved survey "${name}".`);
+                    window.currentLoadedSaveName = null;
+                } else if (name === DEFAULT_SAVE_KEY) { // Default survey not found
+                    // This is normal on first visit, don't show error. Maybe show info or do nothing.
+                    // displayMessage('info', 'No default survey found. Starting fresh.');
+                    // Initialize with a fresh lot if no default data
+                    if (Object.keys(surveyLotsStore).length === 0) { // Check if store is already empty
+                        addLot(); 
+                    }
+                }
+                // If loading default and it's not there, it will proceed to load with a new empty lot via addLot()
+                // which is usually called at the end of document.ready
+            }
+    }
 
     function clearAllLots() {
         if (!confirm('Are you sure you want to clear all lots? This will remove all entered data and cannot be undone.')) {
             return;
         }
 
-        persistActiveLotData(); // Save current active lot's data if any
-
-        surveyLotsStore = {}; // Clear the client-side store
-        lotListUL.empty(); // Remove all lot items from UI
-
-        clearAllLotMapLayers(true); // Clear all map layers including reference marker
-
-        lotCounter = 0; // Reset lot counter
-
+        // Discard current unsaved edits in the active editor if any, then clear.
+        surveyLotsStore = {};
+        window.currentLoadedSaveName = null; // Reset active save context.
+        
+        lotListUL.empty(); 
+        clearAllLotMapLayers(true); 
+        lotCounter = 0; 
         activeLotId = null;
         activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">All lots cleared. Add a new lot to begin.</div>').addClass('placeholder');
-        activeLotEditorArea.removeClass('editor-minimized'); // Ensure editor is not stuck in minimized state
-
-        addLot(); // Add a fresh "Lot 1"
-
-        triggerMapUpdateWithDebounce(); // Refresh map state
-
-        displayMessage('info', 'All lots have been cleared.');
+        activeLotEditorArea.removeClass('editor-minimized');
+        
+        saveCurrentSurvey(null, false); // Saves empty state, sets hasUnsavedChanges=false (if successful), updates display.
+        
+        addLot(); // Adds Lot 1, its saveCurrentSurvey call will set hasUnsavedChanges=false and update display.
+        
+        displayMessage('info', 'All lots have been cleared and a new Lot 1 started.');
+        // Explicitly ensure it's false after the whole operation, as addLot's save is the last one.
+        // saveCurrentSurvey within addLot should make hasUnsavedChanges false.
+        // updateActiveSaveStatusDisplay() is called by the save operations within.
+        hasUnsavedChanges = false; 
+        updateActiveSaveStatusDisplay(); 
     }
 
     function addLot() {
+        // Persist data of the currently active lot *before* adding a new one and changing activeLotId
+        // setActiveLot (called below) handles persisting the *previously* active lot.
+        // So, no explicit persistActiveLotData() needed here before creating new lot.
+
         lotCounter++;
         const newLotId = `lot_${lotCounter}`;
         const lotNum = lotCounter;
@@ -210,14 +625,17 @@ $(document).ready(function () {
                                 `<span class="lot-name-display">${defaultLotName}</span>` +
                                 `<button class="btn-remove-lot-list" title="Remove ${defaultLotName}">×</button>` +
                              `</li>`;
-        const listItem = $(listItemHTML);
-        lotListUL.append(listItem);
+        lotListUL.append(listItemHTML);
 
         if (map && !plottedFeatureGroups[newLotId]) {
             plottedFeatureGroups[newLotId] = L.featureGroup().addTo(map);
         }
-        setActiveLot(newLotId);
-        triggerMapUpdateWithDebounce(); // This will also persist and plot
+        
+        setActiveLot(newLotId); // This persists previous lot (if any), renders new one.
+                               // persistActiveLotData (for prev lot) calls saveCurrentSurvey with isSaveAs=false.
+                               // Then, we save the state *after* this new lot is added.
+        saveCurrentSurvey(window.currentLoadedSaveName || undefined, false); // isSaveAs is false
+        triggerMapUpdateWithDebounce(); // Plot the new empty lot.
     }
 
     function removeLot(lotIdToRemove) {
@@ -225,9 +643,12 @@ $(document).ready(function () {
             return;
         }
 
+        // If the lot being removed is not the currently active one,
+        // and there IS an active lot, persist the active lot's data first.
         if (activeLotId && activeLotId !== lotIdToRemove) {
-            persistActiveLotData(); // Persist current active lot before removing another
+            persistActiveLotData(); // This will also autosave current context.
         }
+        // If the lot being removed IS the active one, its data in editor is lost.
 
         lotListUL.find(`li[data-lot-id="${lotIdToRemove}"]`).remove();
         delete surveyLotsStore[lotIdToRemove];
@@ -246,13 +667,14 @@ $(document).ready(function () {
             
             const firstRemainingLot = lotListUL.find('li:first-child').data('lot-id');
             if (firstRemainingLot) {
-                setActiveLot(firstRemainingLot);
-            } else {
-                triggerMapUpdateWithDebounce(); // Update map if no lots are left
+                setActiveLot(firstRemainingLot); // This will persist old (null), render new, and its persist will save.
             }
-        } else {
-            triggerMapUpdateWithDebounce(); // Update map if a non-active lot was removed
+            // If no lots remain, activeLotId is null, editor is placeholder.
         }
+        
+        // Save the state after removal and potential change of active lot.
+        saveCurrentSurvey(window.currentLoadedSaveName || undefined, false); // isSaveAs is false
+        triggerMapUpdateWithDebounce(); // Update map display.
     }
 
     function setActiveLot(lotIdToActivate) {
@@ -366,6 +788,8 @@ $(document).ready(function () {
             const displayedName = currentName || defaultName;
             activeLotEditorArea.find('.dynamic-lot-name-header').text(displayedName);
             activeLotEditorArea.find('.btn-add-point-to-lot').text(`Add Point to ${displayedName}`);
+            hasUnsavedChanges = true;
+            updateActiveSaveStatusDisplay();
         });
 
         const surveyPointsListContainer = activeLotEditorArea.find('.surveyPointsListContainer');
@@ -424,6 +848,8 @@ $(document).ready(function () {
             </div>`;
         surveyPointsListContainer.append(newRowHtml);
         updateRowLabelsForActiveEditor(surveyPointsListContainer);
+        hasUnsavedChanges = true;
+        updateActiveSaveStatusDisplay();
     }
 
     function updateRowLabelsForActiveEditor(surveyPointsListContainer) {
@@ -474,6 +900,185 @@ $(document).ready(function () {
         }
     });
 
+    $('#importSurveyDataBtn').on('click', function() {
+        $('#importSurveyFile').click(); // Trigger hidden file input
+    });
+
+    $('#importSurveyFile').on('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return; // No file selected
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            let importedData;
+            try {
+                importedData = JSON.parse(e.target.result);
+            } catch (err) {
+                displayMessage('error', 'Invalid file format: Not a valid JSON file.');
+                $(this).val(null); // Reset file input
+                return;
+            }
+
+            // Basic validation of the imported data structure
+            if (typeof importedData !== 'object' || importedData === null) {
+                displayMessage('error', 'Invalid data structure: Expected an object.');
+                $(this).val(null);
+                return;
+            }
+
+            let maxLotNumFromFile = 0;
+            
+            if (!validateSurveyDataObject(importedData, 'imported file')) {
+                displayMessage('error', 'Imported file contains invalid or corrupted survey data. Cannot import.');
+                $(this).val(null); // Reset file input
+                return;
+            }
+            
+            // Ask user how to import
+            const importChoice = confirm("Choose import mode:\n\n" +  // Message updated for clarity
+                                     "OK = Overwrite Current Survey (unsaved changes will be lost)\n" +
+                                     "Cancel = Import as New Named Save");
+
+            if (importChoice) { // User chose "Overwrite Current Survey"
+                // Second confirmation specifically for overwriting default
+                if (!confirm("Are you sure you want to overwrite your current default survey data? This action cannot be undone.")) {
+                    displayMessage('info', 'Import operation to overwrite default cancelled.');
+                    $(this).val(null); // Reset file input
+                    return; // Abort the import
+                }
+
+                surveyLotsStore = importedData; // Replace in-memory store
+                window.currentLoadedSaveName = null; // Clear active named save context
+                saveCurrentSurvey(null, false); // Save imported data to default, not a "Save As"
+                                     // updateActiveSaveStatusDisplay is called within saveCurrentSurvey
+                displayMessage('success', 'Survey data imported and replaced current survey (saved to default).');
+
+            } else { // User chose "Import as New Named Save"
+                const newSaveName = prompt("Enter a name for the new imported survey save:");
+                if (newSaveName && newSaveName.trim() !== "") {
+                    surveyLotsStore = importedData; // Replace in-memory store
+                    // saveCurrentSurvey with a name and isSaveAs=true will handle potential overwrite of existing named save
+                    // and will set window.currentLoadedSaveName
+                    saveCurrentSurvey(newSaveName.trim(), true); 
+                    // displayMessage is handled by saveCurrentSurvey
+                } else {
+                    displayMessage('info', 'Import as new save cancelled or no name provided.');
+                    $(this).val(null); // Reset file input
+                    return;
+                }
+            }
+
+            // Common UI Refresh logic after import choice processed
+            lotListUL.empty();
+            activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">Select a lot or add a new one.</div>').addClass('placeholder');
+            activeLotId = null;
+            lotCounter = 0; // Reset counter
+
+            let firstLotId = null;
+            // Update lotCounter based on max 'num' from imported data
+            // This was already done by maxLotNumFromFile, so lotCounter can be set to it.
+            lotCounter = maxLotNumFromFile;
+
+
+            if (Object.keys(surveyLotsStore).length > 0) {
+                for (const lotId in surveyLotsStore) {
+                    if (surveyLotsStore.hasOwnProperty(lotId)) {
+                        const lotData = surveyLotsStore[lotId];
+                        // Ensure 'num' exists, fallback if necessary (though validation should catch this)
+                        lotData.num = lotData.num || (parseInt(lotId.split('_')[1], 10) || (lotCounter + 1));
+                        lotCounter = Math.max(lotCounter, lotData.num);
+
+
+                        const listItemHTML = `<li data-lot-id="${lotId}">` +
+                                            `<span class="lot-name-display">${$('<div/>').text(lotData.name).html()}</span>` +
+                                            `<button class="btn-remove-lot-list" title="Remove ${$('<div/>').text(lotData.name).html()}">×</button>` +
+                                         `</li>`;
+                        lotListUL.append(listItemHTML);
+                        if (!firstLotId) firstLotId = lotId;
+
+                        if (map && !plottedFeatureGroups[lotId]) {
+                            plottedFeatureGroups[lotId] = L.featureGroup().addTo(map);
+                        } else if (map && plottedFeatureGroups[lotId]) {
+                            plottedFeatureGroups[lotId].clearLayers();
+                        }
+                    }
+                }
+                if (firstLotId) {
+                    setActiveLot(firstLotId);
+                }
+            } else { // No lots in imported data
+                addLot(); // Add a fresh "Lot 1"
+            }
+            
+            populateNamedSavesDropdown(); // Refresh dropdown
+            triggerMapUpdateWithDebounce(); // Update map
+
+            $(this).val(null); // Reset file input
+        };
+
+        reader.onerror = () => {
+            displayMessage('error', 'Error reading file.');
+            $(this).val(null); // Reset file input
+        };
+
+        reader.readAsText(file);
+    });
+
+    $('#exportSurveyDataBtn').on('click', function() {
+        persistActiveLotData(); // Ensure current lot data is saved to surveyLotsStore
+
+        if (Object.keys(surveyLotsStore).length === 0) {
+            displayMessage('info', 'No survey data to export.');
+            return;
+        }
+
+        let hasMeaningfulData = false;
+        for (const lotId in surveyLotsStore) {
+            if (surveyLotsStore.hasOwnProperty(lotId)) {
+                const lot = surveyLotsStore[lotId];
+                // A lot has meaningful data if it has lines or its name has been changed from the default
+                if ((lot.lines_text && lot.lines_text.trim() !== "") ||
+                    (lot.name && lot.name.trim() !== `Lot ${lot.num}`)) {
+                    hasMeaningfulData = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasMeaningfulData) {
+            displayMessage('info', 'No actual survey data to export. Add lines to lots or change their default names.');
+            return;
+        }
+
+        try {
+            const surveyDataJson = JSON.stringify(surveyLotsStore, null, 2);
+            const blob = new Blob([surveyDataJson], { type: 'application/json' });
+            // Assuming triggerDownload exists and is suitable:
+            // triggerDownload(blob, 'survey_data.llph', 'Survey data file'); 
+            // Let's define a local version for clarity or use the global one if confirmed it's perfectly suitable.
+            // The global triggerDownload is designed for fetch responses. This is simpler.
+
+            const filename = 'survey_data.llph';
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            displayMessage('success', `Survey data exported as '${filename}'.`);
+
+        } catch (error) {
+            console.error('Error exporting survey data:', error);
+            displayMessage('error', 'Could not export survey data.');
+        }
+    });
+
     activeLotEditorArea.on('click', '.btn-toggle-editor', function () {
         isEditorMinimized = !isEditorMinimized;
         const editor = $(this).closest('.active-lot-editor-container');
@@ -505,6 +1110,8 @@ $(document).ready(function () {
         const surveyPointsListContainer = pointRow.parent();
         pointRow.remove();
         updateRowLabelsForActiveEditor(surveyPointsListContainer); // Renumber remaining rows
+        hasUnsavedChanges = true;
+        updateActiveSaveStatusDisplay();
         triggerMapUpdateWithDebounce();
     });
 
@@ -515,16 +1122,36 @@ $(document).ready(function () {
     // --- MESSAGING, VALIDATION, PAYLOAD, SERVER CALLS ---
 
     function showLoading(message = "Processing...") {
-        const overlay = $('#loadingOverlay');
-        const messageElement = $('#loadingMessage');
-        
-        messageElement.text(message);
-        overlay.css('display', 'flex');
+        // Clear any existing timer to prevent multiple overlays or premature showing
+        if (loadingOverlayTimerId) {
+            clearTimeout(loadingOverlayTimerId);
+        }
+
+        // Set a new timer to show the overlay after a delay
+        loadingOverlayTimerId = setTimeout(() => {
+            const overlay = $('#loadingOverlay');
+            const messageElement = $('#loadingMessage');
+            
+            if (messageElement.length && overlay.length) { // Ensure elements exist
+                messageElement.text(message);
+                overlay.css('display', 'flex'); // Show the overlay
+            }
+            loadingOverlayTimerId = null; // Clear the timer ID once the overlay is shown
+        }, LOADING_OVERLAY_DELAY);
     }
 
     function hideLoading() {
+        // If there's a pending timer to show the overlay, clear it
+        if (loadingOverlayTimerId) {
+            clearTimeout(loadingOverlayTimerId);
+            loadingOverlayTimerId = null;
+        }
+        
+        // Hide the overlay element itself
         const overlay = $('#loadingOverlay');
-        overlay.css('display', 'none');
+        if (overlay.length) { // Ensure element exists
+            overlay.css('display', 'none');
+        }
     }
 
     function displayMessage(type, message) {
@@ -1165,427 +1792,163 @@ $(document).ready(function () {
         });
     });
 
-    const uploadedLayersListUL = $('#uploadedLayersList'); 
-    const noUploadedLayersMsg = $('#noUploadedLayersMessage');
-
     // Initial setup
-    initMap();
-    addLot(); // Start with one empty lot
 
-    // Initial state for "No Layers" message
-    if (uploadedLayersListUL.children().length === 0) {
-        noUploadedLayersMsg.show();
-    } else {
-        noUploadedLayersMsg.hide();
-    }
-
-    // --- Event Listener for Clearing Uploaded Layers ---
-    // This button was removed in the previous HTML step, will be re-added if functionality is merged later.
-    // For now, keeping it commented or removing if truly deprecated by new manager.
-    // Based on previous HTML changes, this button is gone. The new manager will have per-layer delete.
-    // $('#clearUploadedLayersBtn').on('click', function() { 
-    //     clearUploadedGeodataLayers(); 
-    // });
-
-    // --- Drag and Drop for ZIP files on Map ---
-    const mapContainer = document.getElementById('map');
-
-    // --- Uploaded Layer Manager Event Listeners ---
-    uploadedLayersListUL.on('click', '.btn-layer-visibility', function() {
-        const button = $(this);
-        const layerItem = button.closest('.layer-item');
-        const layerId = layerItem.data('layer-id'); // Get the layer ID (name)
-
-        if (!layerId || !uploadedGeodataLayers[layerId]) {
-            console.error('Layer or layer data not found for ID:', layerId);
-            return;
-        }
-
-        const leafletLayerGroup = uploadedGeodataLayers[layerId];
-
-        if (map.hasLayer(leafletLayerGroup)) {
-            map.removeLayer(leafletLayerGroup);
-            layerItem.addClass('layer-hidden');
-            // button.text('🙈'); // Using CSS classes for icons now
-            button.attr('title', 'Show Layer');
-            button.removeClass('layer-visible-icon').addClass('layer-hidden-icon'); 
+    // Event Handlers for Save/Load System
+    $('#saveSurveyBtn').on('click', function() {
+        // Persist data from active editor (if any) into surveyLotsStore, 
+        // then save surveyLotsStore to localStorage (default or active named).
+        // persistActiveLotData itself now calls saveCurrentSurvey.
+        if (activeLotId) {
+            persistActiveLotData(); // This itself calls saveCurrentSurvey(context, false)
         } else {
-            map.addLayer(leafletLayerGroup);
-            layerItem.removeClass('layer-hidden');
-            // button.text('👁️'); // Using CSS classes for icons now
-            button.attr('title', 'Hide Layer');
-            button.removeClass('layer-hidden-icon').addClass('layer-visible-icon');
+            // If no lot is active, there are no UI fields to persist.
+            // Just save the current state of surveyLotsStore to the current context.
+            saveCurrentSurvey(window.currentLoadedSaveName || undefined, false);
+        }
+        // displayMessage is handled by the saveCurrentSurvey call within persistActiveLotData or the direct call.
+    });
+
+    $('#saveAsSurveyBtn').on('click', function() {
+        if (activeLotId) { // Persist data if a lot is active in editor
+            persistActiveLotData(); // This autosaves to the *current* context (isSaveAs=false)
+        }
+        // surveyLotsStore is now up-to-date with any active editor changes.
+        const name = prompt("Enter a name for this survey save (current survey will be saved under this new name):");
+        if (name && name.trim() !== "") {
+            saveCurrentSurvey(name.trim(), true); // Explicitly a "Save As" operation
+        } else if (name !== null) { 
+            displayMessage('warning', 'Save As name cannot be empty.');
         }
     });
 
-    // Placeholder for Zoom and Delete functionality - to be implemented in next steps
-    uploadedLayersListUL.on('click', '.btn-layer-zoom', function() {
-        const button = $(this); // 'this' refers to the clicked button
-        const layerItem = button.closest('.layer-item');
-        const layerId = layerItem.data('layer-id');
+    $('#savedSurveysDropdown').on('change', function() {
+        const selectedName = $(this).val();
+        if (selectedName) {
+            $('#loadSelectedSurveyBtn').prop('disabled', false);
+            $('#deleteSelectedSurveyBtn').prop('disabled', false);
+        } else {
+            $('#loadSelectedSurveyBtn').prop('disabled', true);
+            $('#deleteSelectedSurveyBtn').prop('disabled', true);
+        }
+    });
 
-        if (!layerId || !uploadedGeodataLayers[layerId]) {
-            console.error('Layer or layer data not found for ID:', layerId);
-            displayMessage('error', 'Could not find layer data to zoom.');
+    $('#loadSelectedSurveyBtn').on('click', function() {
+        const selectedName = $('#savedSurveysDropdown').val();
+        if (selectedName) {
+            loadSurvey(selectedName);
+        } else {
+            displayMessage('warning', 'Please select a survey to load.');
+        }
+    });
+
+    $('#deleteSelectedSurveyBtn').on('click', function() {
+        const selectedName = $('#savedSurveysDropdown').val();
+        if (selectedName) {
+            if (confirm(`Are you sure you want to delete the survey "${selectedName}"? This cannot be undone.`)) {
+                deleteSurvey(selectedName);
+            }
+        } else {
+            displayMessage('warning', 'Please select a survey to delete.');
+        }
+    });
+
+    // Initial population of dropdown and load default survey
+    if (isLocalStorageAvailable) {
+        populateNamedSavesDropdown(); 
+        loadSurvey(); 
+        updateActiveSaveStatusDisplay(); 
+    } else {
+        // If localStorage is not available, still need to init some basic app state
+        // The UI elements that depend on localStorage are already disabled.
+        // We still need to allow adding lots in-memory for the current session.
+        surveyLotsStore = {};
+        window.currentLoadedSaveName = null;
+        activeLotId = null;
+        lotCounter = 0;
+        populateNamedSavesDropdown(); // Will show "no saves"
+        updateActiveSaveStatusDisplay(); // Will show "Default Survey"
+        addLot(); // Add a fresh "Lot 1" for in-memory use
+        displayMessage('error', 'Warning: Browser storage is unavailable or disabled. Saving, loading, and survey preferences will not work. Please check your browser settings.', 0); // 0 for non-fading
+
+        const UIElementsToDisable = [
+            '#saveSurveyBtn', '#saveAsSurveyBtn', '#savedSurveysDropdown',
+            '#loadSelectedSurveyBtn', '#deleteSelectedSurveyBtn',
+            '#importSurveyDataBtn', '#importSurveyFile', 
+            '#resetApplicationDataBtn',
+            '#basemapSelect', 
+            '#target_crs_select'
+        ];
+        UIElementsToDisable.forEach(selector => {
+            $(selector).prop('disabled', true).css('opacity', 0.5).attr('title', 'Feature disabled: Browser storage unavailable.');
+        });
+    }
+
+
+    $('#resetApplicationDataBtn').on('click', function() {
+        if (!isLocalStorageAvailable) {
+            displayMessage('error', 'Browser storage is unavailable. Reset is not applicable.');
             return;
         }
-
-        const leafletLayerGroup = uploadedGeodataLayers[layerId];
-
-        // If hidden, make it visible, then zoom.
-        if (!map.hasLayer(leafletLayerGroup)) {
-            map.addLayer(leafletLayerGroup);
-            // Update UI to reflect it's now visible
-            layerItem.removeClass('layer-hidden');
-            layerItem.find('.btn-layer-visibility') // Find the specific button
-                     .attr('title', 'Hide Layer')  // Update title
-                     .removeClass('layer-hidden-icon') // Update icon via CSS classes
-                     .addClass('layer-visible-icon');
+        if (!confirm("WARNING: This will delete ALL survey data, including all named saves and the default survey, from your browser's storage. This action cannot be undone. Are you absolutely sure you want to proceed?")) {
+            return; 
         }
+
+        // Delete individual named saves
+        const namedSavesIndex = safeLocalStorageGetJson(NAMED_SAVES_INDEX_KEY, {});
+        for (const name in namedSavesIndex) {
+            if (namedSavesIndex.hasOwnProperty(name)) {
+                safeLocalStorageRemove(`surveyLotsStore_data_${name}`);
+            }
+        }
+
+        // Delete the index itself
+        safeLocalStorageRemove(NAMED_SAVES_INDEX_KEY);
         
-        // Get bounds and fit map
-        try {
-            const bounds = leafletLayerGroup.getBounds();
-            if (bounds && bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 18 });
-            } else {
-                // This can happen if the layer is empty or contains only single points without a spread
-                displayMessage('info', `Layer '${layerId}' has no valid bounds to zoom to (it might be empty or contain only a single point).`);
-                const layersInGroup = leafletLayerGroup.getLayers();
-                if (layersInGroup.length === 1 && (layersInGroup[0] instanceof L.Marker || layersInGroup[0] instanceof L.CircleMarker)) {
-                    map.setView(layersInGroup[0].getLatLng(), 18); // Zoom to a fixed level for single points
-                }
-            }
-        } catch (e) {
-            console.error("Error getting bounds or zooming:", e);
-            displayMessage('error', `Could not zoom to layer '${layerId}'. It may not have plottable features.`);
-        }
-    });
+        // Delete the default save
+        safeLocalStorageRemove(DEFAULT_SAVE_KEY);
 
-    uploadedLayersListUL.on('click', '.btn-layer-delete', function() {
-        // 'this' refers to the clicked button
-        const button = $(this);
-        const layerItem = button.closest('.layer-item');
-        const layerId = layerItem.data('layer-id');
+        // Delete other app-specific settings
+        safeLocalStorageRemove('selectedBasemap');
+        safeLocalStorageRemove('selectedCRS');
 
-        if (!layerId) { // No layerId usually means something is wrong with the item
-            console.error('Could not identify layer to delete.');
-            displayMessage('error', 'Error identifying layer for deletion.');
-            return;
-        }
+        // Reset application state variables
+        surveyLotsStore = {};
+        window.currentLoadedSaveName = null;
+        activeLotId = null;
+        lotCounter = 0;
 
-        // Confirmation dialog
-        if (!confirm(`Are you sure you want to delete the layer: "${layerId}"? This action cannot be undone.`)) {
-            return; // User cancelled
-        }
-
-        // Check if the layer exists in our tracking object
-        if (uploadedGeodataLayers[layerId]) {
-            const leafletLayerGroup = uploadedGeodataLayers[layerId];
-            // Remove from map if it's currently there
-            if (map.hasLayer(leafletLayerGroup)) {
-                map.removeLayer(leafletLayerGroup);
-            }
-            // Delete from our tracking object
-            delete uploadedGeodataLayers[layerId];
-        } else {
-            // Layer might be in UI but not in JS objects (should not happen with current logic)
-            console.warn('Layer data not found in uploadedGeodataLayers for ID:', layerId, 'but attempting to remove UI item.');
-        }
-
-        // Remove the layer item from the UI list
-        layerItem.remove();
-
-        // Check if the list is now empty and show the "No layers" message if needed
-        // const uploadedLayersListUL = $('#uploadedLayersList'); // Already available globally
-        // const noUploadedLayersMsg = $('#noUploadedLayersMessage'); // Already available globally
-        if (uploadedLayersListUL.children().length === 0) {
-            noUploadedLayersMsg.show();
-        } else {
-            noUploadedLayersMsg.hide();
-        }
-
-        displayMessage('info', `Layer "${layerId}" has been deleted.`);
+        // Reset UI
+        $('#lotList').empty();
+        activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">Select a lot from the list or add a new one to start editing.</div>').addClass('placeholder');
+        
+        populateNamedSavesDropdown(); 
+        updateActiveSaveStatusDisplay(); 
+        
+        addLot(); // This will eventually set hasUnsavedChanges = false via its save.
+        
+        triggerMapUpdateWithDebounce(); 
+        
+        displayMessage('info', 'All application data has been reset. Starting with a fresh survey.');
+        // Ensure clean state after all reset operations
+        hasUnsavedChanges = false;
+        updateActiveSaveStatusDisplay();
     });
 
 
-    if (mapContainer) {
-        mapContainer.addEventListener('dragenter', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            mapContainer.classList.add('drag-over-map');
-        });
+    // Fallback: if after loading default, no lots are present (e.g. fresh start, no default save)
+    // Ensure there's at least one lot to work with.
+    // loadSurvey() already handles adding a new lot if the loaded data is empty or no data found.
+    // However, if loadSurvey() itself isn't called (e.g. if we change logic later),
+    // this explicit addLot() call AFTER populate and loadSurvey might be a safety net.
+    // For now, loadSurvey() should handle it.
+    // if (Object.keys(surveyLotsStore).length === 0) {
+    //    addLot();
+    // }
+    // The existing addLot() at the end of document.ready might conflict or be redundant.
+    // It should be removed or integrated into this initial load logic.
+    // Let's remove the standalone addLot() at the end.
 
-        mapContainer.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            e.stopPropagation(); // Necessary to allow dropping
-        });
-
-        mapContainer.addEventListener('dragleave', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            // Check if the leave target is outside the map container or its children
-            // This helps prevent flickering when dragging over child elements in the map
-            if (e.target === mapContainer || !mapContainer.contains(e.relatedTarget)) {
-                mapContainer.classList.remove('drag-over-map');
-            }
-        });
-
-        mapContainer.addEventListener('drop', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            mapContainer.classList.remove('drag-over-map');
-
-            const files = e.dataTransfer.files;
-            if (!files || files.length === 0) {
-                displayMessage('warning', 'No files were dropped.');
-                return;
-            }
-            const file = files[0]; // Process only the first file
-            const fileNameLower = file.name.toLowerCase();
-
-            let endpoint = '';
-            let formDataKey = '';
-
-            if (fileNameLower.endsWith('.geojson')) {
-                endpoint = '/api/upload_geojson_file';
-                formDataKey = 'geojsonfile';
-            } else if (fileNameLower.endsWith('.dxf')) {
-                endpoint = '/api/upload_dxf_file';
-                formDataKey = 'dxffile';
-
-                const selectedCRS = $('#target_crs_select').val();
-                if (!selectedCRS) {
-                    displayMessage('error', 'A Target CRS must be selected in Global Settings to process DXF files accurately. Please select a CRS and try again.');
-                    // No need to remove 'drag-over-map' as it's already removed at the start of the drop handler.
-                    // No need to hideLoading() here as it hasn't been called yet for this path.
-                    return; // Stop the upload
-                }
-                // formData will be initialized after this block before appending.
-            } else if (fileNameLower.endsWith('.zip')) {
-                endpoint = '/api/upload_geospatial_zip'; // For Shapefiles (which are inside ZIP)
-                formDataKey = 'zipfile';
-            } else {
-                displayMessage('error', 'Unsupported file type. Please drop a .geojson, .dxf, or .zip file.');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append(formDataKey, file, file.name);
-
-            // Append source_crs_epsg specifically for DXF files
-            if (formDataKey === 'dxffile') {
-                const selectedCRS = $('#target_crs_select').val(); // Re-fetch in case it was changed, though unlikely
-                formData.append('source_crs_epsg', selectedCRS);
-            }
-
-            showLoading('Uploading and processing file...');
-
-            fetch(endpoint, { // Use the determined endpoint
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                if (data.status === 'success') {
-                    displayMessage('info', data.message || 'File processed successfully. Plotting data...');
-                    if (data.layers && data.layers.length > 0) {
-                        plotUploadedGeospatialData(data.layers);
-                    } else {
-                        // This case might occur if a valid file type is sent but contains no plottable data
-                        // or if the success message from backend indicates no layers.
-                        displayMessage('info', data.message || 'No plottable layers found in the file.');
-                        clearUploadedGeodataLayers(); // Clear any existing uploaded layers
-                    }
-                } else {
-                    displayMessage('error', `Processing failed: ${data.message || 'Unknown error'}`);
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error('Upload Error:', error);
-                displayMessage('error', `Upload failed: ${error.message || 'Network error or server unavailable'}`);
-            });
-        });
-    } else {
-        console.error("Map container with ID 'map' not found for drag-drop setup.");
-    }
-
-    function clearUploadedGeodataLayers() {
-        if (map && uploadedGeodataLayers) {
-            let count = 0;
-            for (const layerName in uploadedGeodataLayers) {
-                if (uploadedGeodataLayers.hasOwnProperty(layerName) && uploadedGeodataLayers[layerName]) {
-                    if (map.hasLayer(uploadedGeodataLayers[layerName])) {
-                        map.removeLayer(uploadedGeodataLayers[layerName]);
-                        count++;
-                    }
-                }
-            }
-            uploadedGeodataLayers = {};
-            // Clear UI list as well when clearing all layers
-            uploadedLayersListUL.empty(); 
-            if (count > 0) {
-                displayMessage('info', 'All uploaded map layers have been cleared.');
-            } else {
-                displayMessage('info', 'No uploaded map layers to clear.');
-            }
-        } else {
-            uploadedGeodataLayers = {};
-            uploadedLayersListUL.empty();
-            displayMessage('info', 'No uploaded map layers to clear.');
-        }
-        // Update "no layers" message visibility
-        if (uploadedLayersListUL.children().length === 0) {
-            noUploadedLayersMsg.show();
-        } else {
-            noUploadedLayersMsg.hide();
-        }
-    }
-
-    function plotUploadedGeospatialData(layers) {
-        if (!map) {
-            console.error("Map is not initialized. Cannot plot uploaded data.");
-            return;
-        }
-
-        clearUploadedGeodataLayers(); // Clear previous layers from map and the JS object
-        uploadedLayersListUL.empty(); // Clear previous list items from the UI
-
-        let allNewBounds = L.latLngBounds([]);
-
-        layers.forEach((layerData, layerIndex) => { // Renamed 'layers' to 'layerData' for clarity
-            if (!layerData.features || layerData.features.length === 0) {
-                return;
-            }
-
-            const layerName = layerData.name;
-            const sanitizedLayerName = $('<div>').text(layerName).html(); // Sanitize for display
-
-            const layerItemHTML = `
-                <li class="layer-item" data-layer-id="${sanitizedLayerName}">
-                    <span class="layer-name-display">${sanitizedLayerName}</span>
-                    <div class="layer-controls">
-                        <button class="btn-layer-visibility layer-visible-icon" title="Toggle Visibility">👁️</button> 
-                        <button class="btn-layer-zoom" title="Zoom to Layer">🔍</button>
-                        <button class="btn-layer-delete" title="Delete Layer">🗑️</button>
-                    </div>
-                </li>
-            `;
-            uploadedLayersListUL.append(layerItemHTML);
-            
-            const layerGroup = L.featureGroup();
-
-            const geoJsonLayer = L.geoJSON(layerData.features, { // Use layerData.features
-                style: function (feature) {
-                    let styleOptions = {
-                        weight: 2,
-                        opacity: 0.85,
-                        fillOpacity: 0.3
-                    };
-                    if (layerData.type === 'vector-dxf') {
-                        styleOptions.color = '#A020F0'; // Purple for DXF entities
-                        styleOptions.fillColor = '#A020F0';
-                        if (feature.geometry.type === 'Point') {
-                            styleOptions.radius = 3; // Default radius for DXF points (used by L.circleMarker)
-                        }
-                    } else {
-                        // Existing logic for GeoJSON/Shapefile layers
-                        const colorIndex = layers.indexOf(layerData) % lotColors.length;
-                        styleOptions.color = lotColors[colorIndex];
-                        styleOptions.fillColor = lotColors[colorIndex];
-                    }
-                    return styleOptions;
-                },
-                pointToLayer: function (feature, latlng) {
-                    if (layerData.type === 'vector-dxf' && feature.geometry.type === 'Point') {
-                        // Use circleMarker for DXF points, style is applied by the 'style' function
-                        return L.circleMarker(latlng); 
-                    }
-                    // Default marker for non-DXF points or if not customizing
-                    return L.marker(latlng); 
-                },
-                onEachFeature: function (feature, leafletLayer) {
-                    if (feature.properties) {
-                        let popupContent = `<div class="geojson-popup"><strong>Layer: ${layerData.name}</strong>`;
-                        if (layerData.type === 'vector-dxf') {
-                            popupContent += `<br><strong>Type:</strong> ${feature.properties.dxf_entity_type || 'DXF Entity'}`;
-                            if (feature.properties.layer) {
-                                popupContent += `<br><strong>DXF Layer:</strong> ${feature.properties.layer}`;
-                            }
-                            if (feature.properties.text) {
-                                const textValue = String(feature.properties.text).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                                popupContent += `<br><strong>Text:</strong> ${textValue}`;
-                            }
-                            if (feature.properties.radius !== undefined) { // Check for undefined as radius can be 0
-                                popupContent += `<br><strong>Radius:</strong> ${Number(feature.properties.radius).toFixed(3)}`;
-                            }
-                            
-                            let genericPropsCount = 0;
-                            const dxfHandledProps = ['dxf_entity_type', 'layer', 'text', 'radius'];
-                            for (const key in feature.properties) {
-                                if (dxfHandledProps.includes(key)) continue;
-                                
-                                if (genericPropsCount < 5 && feature.properties[key] !== null && feature.properties[key] !== undefined) {
-                                     const valueStr = String(feature.properties[key]).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                                     popupContent += `<br><strong>${key.replace(/</g, "&lt;").replace(/>/g, "&gt;")}:</strong> ${valueStr}`;
-                                     genericPropsCount++;
-                                } else if (genericPropsCount >= 5) {
-                                    popupContent += `<br>...and more properties`;
-                                    break;
-                                }
-                            }
-                        } else {
-                            // Existing property display logic for GeoJSON/Shapefile features
-                            let propCount = 0;
-                            const maxPropsToShow = 10;
-                            for (const key in feature.properties) {
-                                if (propCount >= maxPropsToShow) {
-                                    popupContent += `<br>...and more properties`;
-                                    break;
-                                }
-                                let value = feature.properties[key];
-                                const valueStr = String(value).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                                popupContent += `<br><strong>${key.replace(/</g, "&lt;").replace(/>/g, "&gt;")}:</strong> ${valueStr}`;
-                                propCount++;
-                            }
-                        }
-                        popupContent += `</div>`;
-                        leafletLayer.bindPopup(popupContent);
-                    }
-                }
-            });
-
-            geoJsonLayer.addTo(layerGroup);
-            layerGroup.addTo(map);
-            uploadedGeodataLayers[layerData.name] = layerGroup;
-
-            // Extend the bounds with the bounds of the current layer group
-            if (layerGroup.getLayers().length > 0) { // Check if layerGroup has any layers
-                 try {
-                    const groupBounds = layerGroup.getBounds();
-                    if (groupBounds && groupBounds.isValid()) {
-                         allNewBounds.extend(groupBounds);
-                    }
-                } catch (e) {
-                    console.warn(`Could not get bounds for layer ${layerData.name}: ${e.message}`);
-                }
-            }
-            console.log(`Added layer "${layerData.name}" to map with ${layerData.features.length} features.`);
-        });
-
-        if (allNewBounds.isValid()) {
-            map.fitBounds(allNewBounds, { padding: [50, 50], maxZoom: 18 });
-        } else if (layers.length > 0) { // Check against original 'layers' array from function arg
-            console.warn("Could not determine valid bounds to fit all uploaded layers. Map view unchanged.");
-        }
-
-        // Update "no layers" message visibility after adding new items
-        if (uploadedLayersListUL.children().length === 0) {
-            noUploadedLayersMsg.show();
-        } else {
-            noUploadedLayersMsg.hide();
-        }
-    }
+    initMap();
+    // addLot(); // Start with one empty lot - REMOVED, handled by loadSurvey() or initial state.
 });
