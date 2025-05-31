@@ -350,6 +350,11 @@ input[type="text"].lot-name-input:focus {
     margin-top: 0.2rem;
 }
 
+/* Ensure Select2 dropdowns appear above the mobile fixed sidebar */
+.select2-container--open .select2-dropdown {
+    z-index: 1201;
+}
+
 /* --- Lot Navigator --- */
 .lot-navigator ul {
     margin-top: 0.25rem;
