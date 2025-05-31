@@ -1,31 +1,4 @@
-/* --- CSS Reset & Variables --- */
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    background-color: #f4f7fc;
-    color: #333d48;
-    font-size: 14px;
-    line-height: 1.6;
-    display: flex;
-    flex-direction: column;
-}
-
-ul {
-    padding-inline-start: 0px;
-}
-
+/* --- CSS Variables --- */
 :root {
     --primary-color: #4a90e2;
     --primary-hover-color: #357ABD;
@@ -44,18 +17,35 @@ ul {
     --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     --box-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
     --box-shadow-strong: 0 6px 18px rgba(0, 0, 0, 0.12);
-    /* For floating panel */
     --text-muted: #6c757d;
 }
 
-/* --- App Layout --- */
+/* --- App Structure --- */
+html {
+    height: 100%;
+    overflow-y: hidden;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    background-color: #f4f7fc;
+    color: #333d48;
+    font-size: 14px;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden;
+}
+
+ul {
+    padding-inline-start: 0px;
+}
+
 .app-header {
     background-color: var(--light-bg);
-    padding: 0.8rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
     box-shadow: var(--box-shadow-sm);
-    display: flex;
-    align-items: center;
     flex-shrink: 0;
 }
 
@@ -66,883 +56,261 @@ ul {
     margin: 0;
 }
 
-.disclaimer {
-    position: relative;
-    padding: 0.6rem 2.5rem 0.6rem 1rem;
-    margin: 0.75rem auto;
-    background-color: #fff9e0;
-    color: #7a641d;
-    border: 1px solid #ffecb3;
-    border-radius: var(--border-radius);
-    font-size: 0.8rem;
-    max-width: 90%;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.disclaimer-close {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.5rem;
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #7a641d;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0.2rem 0.4rem;
-    opacity: 0.7;
-}
-
-.disclaimer-close:hover {
-    opacity: 1;
-}
-
 .app-main-container {
-    display: flex;
     flex-grow: 1;
-    overflow: hidden;
-    margin: 0 1rem 1rem 1rem;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    background-color: var(--light-bg);
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.app-main-container > .row {
+    flex-grow: 1;
+    min-height: 0;
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: 0;
+    margin-right: 0;
+    overflow: hidden;
 }
 
 .sidebar {
-    width: 340px;
-    flex-shrink: 0;
     background-color: var(--medium-bg);
-    padding: 1rem;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    border-right: 1px solid var(--border-color);
     min-height: 0;
-    /* Base styles for desktop */
-    position: relative; /* Ensure it's part of the flow on desktop */
-    transform: none; /* No transform on desktop */
+    border-right: 1px solid var(--border-color);
 }
 
 .main-content-area {
-    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     position: relative;
     overflow: hidden;
-    min-height: 0;
 }
 
-.sidebar-section h2,
-.sidebar-section.suggested-features h2 {
+.sidebar .card-header h2,
+.sidebar .card-header h3 {
     font-size: 1rem;
     font-weight: 600;
     color: var(--primary-color);
-    margin-top: 0;
-    margin-bottom: 0.8rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
-
 
 /* --- Map --- */
 .map-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 #map {
     flex-grow: 1;
     width: 100%;
-    height: 100%;
     border: none;
-    border-radius: 0;
     background-color: #e9ecef;
 }
 
 #coordinate-display {
-    position: absolute;
-    bottom: 10px; /* Adjust as needed */
-    left: 10px;
-    right: auto; /* ADDED to ensure no conflict */
-    background-color: rgba(255, 255, 255, 0.7);
-    color: #333;
-    padding: 5px 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 12px;
-    z-index: 1000; /* Ensure it's above map tiles */
-    pointer-events: none; /* Allow map interactions underneath */
+    position: absolute; bottom: 10px; left: 10px;
+    background-color: rgba(255, 255, 255, 0.85);
+    color: #333; padding: 0.25rem 0.5rem;
+    border: 1px solid #ccc; border-radius: .25rem;
+    font-size: 0.75rem; z-index: 1000;
+    pointer-events: none;
 }
 
 /* --- Floating Lot Editor --- */
 .active-lot-editor-container {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    width: 500px;
-    max-width: calc(100% - 2rem);
+    position: absolute; top: 1rem; left: 1rem;
+    width: 500px; max-width: calc(100% - 2rem);
     max-height: calc(100% - 2rem);
     background-color: var(--light-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow-strong);
-    z-index: 1050;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
+    z-index: 1050; padding: 1rem;
+    display: flex; flex-direction: column;
     overflow: hidden;
-    /* This container clips children if they exceed max-height */
     transition: all 0.3s ease-in-out;
 }
-
 .active-lot-editor-container.placeholder {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: auto;
-    max-width: 90%;
-    min-width: 280px;
-    padding: 1.5rem;
-    color: var(--secondary-color);
-    font-style: italic;
-    font-size: 0.9rem;
-    text-align: center;
-}
-
-.active-lot-editor-container .lot-editor-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
-    flex-shrink: 0;
-}
-
+    width: auto; font-style: italic; font-size: 0.9rem; text-align: center; }
+.active-lot-editor-container .lot-editor-header { flex-shrink: 0; }
 .btn-toggle-editor {
-    padding: 0.2rem 0.5rem;
-    font-size: 1.1rem;
-    font-weight: bold;
-    line-height: 1;
-    background-color: transparent;
-    color: var(--secondary-color);
-    border: 1px solid transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    order: -1;
+    padding: 0.2rem 0.5rem; font-size: 1.1rem; font-weight: bold;
+    line-height: 1; background-color: transparent; color: var(--secondary-color);
+    border: 1px solid transparent; border-radius: 4px; cursor: pointer; order: -1;
 }
-
-.btn-toggle-editor:hover {
-    background-color: #e9ecef;
-    border-color: var(--border-color);
-}
-
+.btn-toggle-editor:hover { background-color: #e9ecef; border-color: var(--border-color); }
 .active-lot-editor-container.editor-minimized {
-    width: auto;
-    height: auto;
-    padding: 0.5rem;
-    overflow: hidden;
-    max-height: none;
-}
-
-.active-lot-editor-container.editor-minimized .lot-editor-header {
-    margin-bottom: 0;
-}
-
-.active-lot-editor-container.editor-minimized .lot-editor-header label,
-.active-lot-editor-container.editor-minimized .lot-editor-header input[type="text"].lot-name-input,
+    width: auto; height: auto; padding: 0.5rem; overflow: hidden; max-height: none; }
+.active-lot-editor-container.editor-minimized .lot-editor-header { margin-bottom: 0; }
+.active-lot-editor-container.editor-minimized .lot-editor-header > *:not(.btn-toggle-editor),
 .active-lot-editor-container.editor-minimized .survey-point-editor,
-.active-lot-editor-container.editor-minimized .btn-add-point-to-lot {
-    display: none;
-}
-
-/* .survey-point-editor when inside .active-lot-editor-container */
+.active-lot-editor-container.editor-minimized .misclosure-display-section,
+.active-lot-editor-container.editor-minimized .area-display-section,
+.active-lot-editor-container.editor-minimized .btn-add-point-to-lot { display: none; }
 .active-lot-editor-container .survey-point-editor {
-    flex: 1 1 0;
-    /* MODIFIED: Grow:1, Shrink:1, Basis:0px - allows it to take available space and shrink */
-    min-height: 1;
-    /* MODIFIED: CRITICAL for flex item to shrink below its content size for scrolling */
+    flex: 1 1 0; min-height: 1px;
     transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
-    /* Other styles like overflow, background, padding come from the general .survey-point-editor rule */
 }
-
-.active-lot-editor-container .btn-add-point-to-lot {
-    margin: 0.8rem auto 0 auto;
-    flex-shrink: 0;
-}
-
-/* General styles for ANY survey-point-editor area */
+.active-lot-editor-container .btn-add-point-to-lot { margin: 0.8rem auto 0 auto; flex-shrink: 0; }
 .survey-point-editor {
-    background-color: var(--dark-bg-editor);
-    color: var(--text-color-light);
-    padding: 0.8rem;
-    border-radius: var(--border-radius);
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    background-color: var(--dark-bg-editor); color: var(--text-color-light);
+    padding: 0.8rem; border-radius: var(--border-radius);
+    display: flex; flex-direction: column; align-items: stretch;
     overflow-y: auto;
-    /* This element will scroll its content */
-    overflow-x: hidden;
-    min-height: 200px; /* ADDED: Default minimum height for the editor area */
+    /* overflow-x: hidden; /* Changed for horizontal scroll */
+    min-height: 200px;
 }
 
-/* --- Form Elements & Controls --- */
-.input-group {
-    margin-bottom: 0.9rem;
-}
-
-.input-group label {
-    font-size: 0.85rem;
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-    color: #555;
-    display: block;
-}
-
-select.crs-select,
-.select2-container--default .select2-selection--single,
-input[type="text"].lot-name-input {
-    width: 100%;
-    height: 36px !important;
-    font-size: 0.875rem;
-    border: 1px solid #cbd5e0;
-    border-radius: var(--border-radius);
-    padding: 0.3rem 0.6rem;
-    background-color: #fff;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-select.crs-select:focus,
-input[type="text"].lot-name-input:focus {
-    border-color: var(--primary-color);
-    outline: 0;
-    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
-}
-
-.select2-container--default .select2-selection--single {
-    padding: 0;
-}
-
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: calc(36px - 2px) !important;
-    padding-left: 0.6rem !important;
-}
-
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: calc(36px - 2px) !important;
-}
-
-.global-settings small {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    display: block;
-    margin-top: 0.2rem;
-}
-
-/* --- Lot Navigator --- */
-.lot-navigator ul {
-    margin-top: 0.25rem;
-    list-style: none;
-}
-
-.lot-navigator li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid transparent;
-    border-radius: var(--border-radius);
-    margin-bottom: 0.3rem;
-    cursor: pointer;
-    transition: background-color 0.2s, color 0.2s;
-    font-size: 0.875rem;
-}
-
-.lot-navigator li:hover {
-    background-color: #e7f0fa;
-    color: var(--primary-color);
-}
-
-.lot-navigator li.active {
-    background-color: var(--primary-color);
-    color: white;
-    font-weight: 500;
-}
-
-.lot-navigator li.active .btn-remove-lot-list {
-    color: white;
-    opacity: 0.75;
-}
-
-.lot-navigator li.active .btn-remove-lot-list:hover {
-    opacity: 1;
-}
-
-.lot-navigator .lot-name-display {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-right: 0.5rem;
-}
-
-.lot-navigator .btn-remove-lot-list {
-    background: none;
-    border: none;
-    color: var(--danger-color);
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 0 0.2rem;
-    line-height: 1;
-    opacity: 0.6;
-    flex-shrink: 0;
-    margin-left: 0.5rem;
-}
-
-.lot-navigator .btn-remove-lot-list:hover {
-    opacity: 1;
-}
-
-/* --- Buttons --- */
-.btn {
-    padding: 0.5rem 0.9rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    text-align: center;
-    border: 1px solid transparent;
-    transition: all 0.15s ease-in-out;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-block {
-    display: block;
-    width: 100%;
-}
-
-.btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-}
-
-.btn-primary:hover {
-    background-color: var(--primary-hover-color);
-    border-color: var(--primary-hover-color);
-}
-
-.btn-success {
-    background-color: var(--success-color);
-    color: white;
-    border-color: var(--success-color);
-}
-
-.btn-success:hover {
-    background-color: #25a25a;
-    border-color: #25a25a;
-}
-
-#addLotBtnSidebar {
-    margin-top: 0.8rem;
-}
-
-/* --- Lot Editor Specific Inputs and Table --- */
-.active-lot-editor-container .lot-editor-header label {
-    margin-right: 0.5rem;
-    margin-bottom: 0;
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-
-.active-lot-editor-container .lot-editor-header input[type="text"].lot-name-input {
-    font-size: 0.9rem;
-    flex-grow: 1;
-}
-
-.survey-point-editor h3 {
-    font-size: 0.9rem;
-    color: #e0e5ea;
-    padding-bottom: 0.5rem;
-    margin-top: 0;
-    margin-bottom: 0.8rem;
-    border-bottom: 1px solid #556270;
-    width: 100%;
-    flex-shrink: 0;
-}
-
+/* Container for point headers and rows, to allow horizontal scrolling */
 .survey-point-table-content {
-    /* Takes full width of .survey-point-editor. Does not scroll itself. */
+    overflow-x: auto;
+    padding-bottom: 5px; /* Space for scrollbar if it appears */
 }
 
-.survey-point-editor .point-headers {
-    color: #a8b5c4;
-    font-size: 0.75rem;
-    padding-bottom: 0.4rem;
-    margin-bottom: 0.6rem;
-    display: flex;
-}
 
-.survey-point-editor .survey-point-row {
-    font-size: 0.8rem;
-    margin-bottom: 0.4rem;
-    padding: 0.15rem 0;
-    display: flex;
-    align-items: center;
-}
+/* --- Lot Navigator (Sidebar List) --- */
+.lot-navigator .list-group-item:hover { background-color: #e7f0fa; color: var(--primary-color); }
+.lot-navigator .list-group-item.active {
+    background-color: var(--primary-color); color: white;
+    font-weight: 500; border-color: var(--primary-color); }
+.lot-navigator .list-group-item.active .btn-remove-lot-list { color: white; opacity: 0.75; }
+.lot-navigator .list-group-item.active .btn-remove-lot-list:hover { opacity: 1; }
+.lot-navigator .lot-name-display {
+    flex-grow: 1; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; margin-right: 0.5rem; }
+.lot-navigator .btn-remove-lot-list {
+    background: none; border: none; color: var(--danger-color);
+    cursor: pointer; font-size: 1rem; padding: 0 0.2rem;
+    line-height: 1; opacity: 0.6; flex-shrink: 0; margin-left: 0.5rem; }
+.lot-navigator .btn-remove-lot-list:hover { opacity: 1; }
 
-/* Column Definitions - Allow shrinking */
-.point-headers>span,
-.survey-point-row>* {
-    margin-right: 6px; /* Slightly increased for better spacing */
-    box-sizing: border-box;
-    padding: 2px; /* Added small padding for content within flex items */
-    text-align: center; /* Center text for most items */
-}
+/* --- Lot Editor Specific Inputs and Table (Dark Theme) --- */
+.active-lot-editor-container .lot-editor-header label { font-size: 0.9rem; white-space: nowrap; }
+.active-lot-editor-container .lot-editor-header input[type="text"].lot-name-input { font-size: 0.9rem; }
+.survey-point-editor h3 {
+    font-size: 0.9rem; color: #e0e5ea; padding-bottom: 0.5rem;
+    border-bottom: 1px solid #556270; width: 100%; flex-shrink: 0; }
+.survey-point-editor .point-headers { color: #a8b5c4; font-size: 0.75rem; padding-bottom: 0.4rem; }
+.survey-point-editor .survey-point-row { font-size: 0.8rem; }
+.point-headers > span, .survey-point-row > * {
+    margin-right: 6px; box-sizing: border-box; padding: 2px; text-align: center; }
+.point-headers > span:last-child, .survey-point-row > *:last-child { margin-right: 0; }
 
-.point-headers>span:last-child,
-.survey-point-row>*:last-child {
-    margin-right: 0;
-}
-
-.header-label,
-.point-label {
-    flex: 0 0 65px; /* Fixed base, no grow, no shrink */
-    text-align: left; /* Label text aligned left */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.header-ns,
-.point-ns {
-    flex: 0 0 50px; /* Fixed base for N/S dropdowns */
-}
-
-.header-deg,
-.point-deg {
-    flex: 0 0 55px; /* Fixed base for Degree input */
-}
-
-.header-min,
-.point-min {
-    flex: 0 0 55px; /* Fixed base for Minute input */
-}
-
-.header-ew,
-.point-ew {
-    flex: 0 0 50px; /* Fixed base for E/W dropdowns */
-}
-
-.header-dist,
-.point-dist {
-    flex: 1 1 150px; /* Flexible: can grow, can shrink, base width significantly increased */
-}
-
-.header-action,
-.survey-point-row .btn-remove-point-container {
-    flex: 0 0 35px; /* Slightly more space for remove button */
-    text-align: center;
-}
+/* Flex basis for columns in survey point editor */
+.header-label, .point-label { flex: 0 0 60px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-ns, .point-ns { flex: 0 0 90px; }
+.header-deg, .point-deg { flex: 0 0 90px; }
+.header-min, .point-min { flex: 0 0 90px; }
+.header-ew, .point-ew { flex: 0 0 90px; }
+.header-dist { flex: 1 1 120px; }
+.point-dist { flex: 1 1 auto; min-width: 100px; }
+.header-action, .survey-point-row .btn-remove-point-container { flex: 0 0 40px; text-align: center; }
 
 .survey-point-editor .survey-point-row input,
 .survey-point-editor .survey-point-row select {
-    font-size: 0.8rem;
-    padding: 0.35rem 0.3rem;
-    background-color: #4b5766;
-    border: 1px solid #5f6c7b;
-    color: var(--text-color-light);
-    border-radius: 4px;
-    width: 100%;
-    min-width: 0;
+    background-color: #4b5766; border: 1px solid #5f6c7b;
+    color: var(--text-color-light); min-width: 0;
+    width: 100%; /* Ensure inputs fill their flex containers */
 }
-
 .survey-point-editor .survey-point-row input:focus,
 .survey-point-editor .survey-point-row select:focus {
-    background-color: #525e6c;
-    border-color: var(--primary-color);
-    outline: none;
+    background-color: #525e6c; border-color: var(--primary-color);
+    outline: none; box-shadow: none; }
+.survey-point-editor .point-label { font-weight: 500; }
+
+/* --- Form Element Adjustments --- */
+.input-group:has(#reference_point_select) > small.form-text {
+    margin-top: 0.5rem;
 }
 
-.survey-point-editor .btn-remove-point {
-    padding: 0.2rem 0.5rem;
-    font-size: 0.9rem;
-    background-color: var(--danger-color);
-    border-radius: 4px;
-    color: white;
-    border: none;
-    line-height: 1;
-    cursor: pointer;
-}
-
-.survey-point-editor .btn-remove-point:hover {
-    background-color: #c9302c;
-}
-
-.survey-point-editor .point-label {
-    font-weight: 500;
-}
-
-/* --- Export Buttons --- */
-.export-buttons-section {
-    margin-top: auto;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
-}
-
-/* Styles for .export-buttons-section h3 */
-.export-buttons-section h3 {
-    font-size: 1rem;
-    font-weight: 500; /* Typical weight for h3 if h2 is 600 */
-    color: var(--primary-color);
-    margin-top: 0;
-    margin-bottom: 0.6rem;
-    /* No border-bottom, to differentiate from h2 or per original design */
-}
-
-.btn-export {
-    width: 100%;
-    margin-bottom: 0.5rem;
-    padding: 0.55rem;
-    font-size: 0.875rem;
-}
-
-button#exportDxfBtn.btn-export {
-    background-color: #6f42c1;
-    border-color: #6f42c1;
-    color: white;
-}
-
-button#exportDxfBtn.btn-export:hover {
-    background-color: #5a32a3;
-    border-color: #5a32a3;
-}
-
-button#exportGeoJsonBtn.btn-export {
-    background-color: #0056b3;
-    border-color: #0056b3;
-    color: white;
-}
-
-button#exportGeoJsonBtn.btn-export:hover {
-    background-color: #004494;
-    border-color: #004494;
-}
-
-button#exportShapefileBtn.btn-export {
-    background-color: var(--info-color);
-    border-color: var(--info-color);
-    color: white;
-}
-
-button#exportShapefileBtn.btn-export:hover {
-    background-color: #288ba0;
-    border-color: #288ba0;
-}
-
-button#exportKmzBtn.btn-export {
-    background-color: var(--warning-color);
-    border-color: var(--warning-color);
-    color: var(--text-color);
-}
-
-button#exportKmzBtn.btn-export:hover {
-    background-color: #e99002;
-    border-color: #e99002;
-}
-
-/* --- Messages --- */
-.message-area {
-    margin-bottom: 1rem;
-}
-
-.message {
-    padding: 0.6rem 0.8rem;
-    margin-bottom: 0.5rem;
-    border-radius: var(--border-radius);
-    font-size: 0.85rem;
-}
-
-.message.error {
-    background-color: #fddfe2;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.message.warning {
-    background-color: #fff9e0;
-    color: #856404;
-    border: 1px solid #ffeeba;
-}
-
-.message.info {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
+/* --- Export Buttons (Sidebar Card) --- */
+button#exportDxfBtn.btn-outline-secondary { background-color: #6f42c1 !important; border-color: #6f42c1 !important; color: white !important; }
+button#exportDxfBtn.btn-outline-secondary:hover { background-color: #5a32a3 !important; border-color: #5a32a3 !important; }
+button#exportGeoJsonBtn.btn-outline-secondary { background-color: #0056b3 !important; border-color: #0056b3 !important; color: white !important; }
+button#exportGeoJsonBtn.btn-outline-secondary:hover { background-color: #004494 !important; border-color: #004494 !important; }
+button#exportShapefileBtn.btn-outline-secondary { background-color: var(--info-color) !important; border-color: var(--info-color) !important; color: white !important; }
+button#exportShapefileBtn.btn-outline-secondary:hover { background-color: #288ba0 !important; border-color: #288ba0 !important; }
+button#exportKmzBtn.btn-outline-secondary { background-color: var(--warning-color) !important; border-color: var(--warning-color) !important; color: var(--text-color) !important; }
+button#exportKmzBtn.btn-outline-secondary:hover { background-color: #e99002 !important; border-color: #e99002 !important; }
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 1100px) {
-    .app-main-container {
-        flex-direction: column;
-        overflow-y: auto;
-        margin: 0;
-        border-radius: 0;
-        box-shadow: none;
+    html, body { overflow-y: auto; }
+    .app-main-container { overflow: visible; }
+    .app-main-container > .row {
+        overflow: visible;
     }
-
+    .sidebar, .main-content-area {
+        height: auto !important;
+        min-height: auto !important;
+        overflow-y: visible;
+    }
     .sidebar {
-        width: 100%;
-        max-height: none;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
-        overflow-y: visible;
-        flex-shrink: 0;
     }
-
-    .main-content-area {
-        flex-grow: 1;
-        min-height: 300px;
-    }
-
     .active-lot-editor-container {
-        top: 0.5rem;
-        left: 0.5rem;
-        right: 0.5rem;
-        width: auto;
-        max-width: none;
-        max-height: 60vh;
-        /* Overall height limit for the floating panel */
-        padding: 0.8rem;
-    }
-
-    .active-lot-editor-container.placeholder {
-        max-width: calc(100% - 1rem);
-        padding: 1rem;
-    }
-
-    .active-lot-editor-container.editor-minimized {
-        padding: 0.5rem;
-    }
-        /* ADD THIS NEW RULE: */
-    .active-lot-editor-container.editor-minimized {
-        right: auto; /* Unset 'right' or set to 'auto' to allow shrinking from the right. */
-                     /* 'width: auto;' from the general .editor-minimized rule will then ensure shrink-to-fit. */
-                     /* Padding will be correctly applied from other .editor-minimized rules. */
-    }
-
-    .active-lot-editor-container.placeholder {
-        max-width: calc(100% - 1rem);
-        padding: 1rem;
-    }
+        top: 0.5rem; left: 0.5rem; right: 0.5rem;
+        width: auto; max-width: none;
+        max-height: 60vh; padding: 0.8rem; }
+    .active-lot-editor-container.editor-minimized { right: auto; padding: 0.5rem; }
+    .active-lot-editor-container.placeholder { max-width: calc(100% - 1rem); padding: 1rem; }
 }
 
-
-/* Loading Overlay Styles */
 .loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    display: none; /* Hidden by default */
-    justify-content: center;
-    align-items: center;
-    z-index: 10000; /* Ensure it's on top of other content */
-    color: white;
-    text-align: center;
-}
-
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); display: none;
+    justify-content: center; align-items: center; z-index: 10000;
+    color: white; text-align: center; }
 .loading-overlay .loading-spinner {
-    border: 8px solid #f3f3f3; /* Light grey */
-    border-top: 8px solid #3498db; /* Blue */
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 1.5s linear infinite;
-    margin-bottom: 20px;
-}
+    border: 8px solid #f3f3f3; border-top: 8px solid #3498db;
+    border-radius: 50%; width: 60px; height: 60px;
+    animation: spin 1.5s linear infinite; margin-bottom: 20px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.loading-overlay p { font-size: 1.2em; }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loading-overlay p {
-    font-size: 1.2em;
-}
-
-/* Combined 767px and 768px rules for simplicity, using 768px as the common breakpoint */
 @media (max-width: 768px) { 
-    body {
-        font-size: 13px; /* From original 767px block */
-    }
-
-    .app-header h1 {
-        font-size: 1.15rem; /* From original 767px block */
-        /* margin-left: 35px; /* REMOVED - Revert to default behavior */
-    }
-    .app-header {
-        /* No changes needed here */
-    }
-
-    .sidebar {
-        /* This block now only contains styles that were specific to the 767px/768px breakpoint
-           AND are NOT part of the hamburger/collapsible functionality being removed.
-           The hamburger-specific styles (fixed position, transform, etc.) are removed.
-           It will now inherit from .sidebar base and the @media (max-width: 1100px) block.
-        */
-        padding: 0.8rem; /* This was a specific mobile padding, keeping it for now unless full revert to 1100px style is desired. */
-                         /* For full revert, this padding rule could also be removed. */
-                         /* Let's remove it to fully revert to 1100px behavior where padding is 1rem from base .sidebar */
-    }
-
-    .active-lot-editor-container {
-        padding: 0.6rem; /* From original 767px block */
-        max-height: 55vh; /* From original 767px block */
-    }
-
-    .active-lot-editor-container.placeholder {
-        padding: 0.8rem; /* From original 767px block */
-    }
-
-    .active-lot-editor-container.editor-minimized {
-        padding: 0.4rem; /* From original 767px block */
-    }
-
-    /* Hamburger button styles (like .hamburger-button { display: block; ...}) are removed. */
-    /* .sidebar fixed positioning, transform, etc. are removed. */
-    /* .sidebar.sidebar-open rule is removed. */
-    
-    .app-main-container {
-         /* margin: 0; /* This was already set by @media (max-width: 1100px), so no specific change here if that's desired baseline. */
-    }
-
-    /* Other rules from the previous 767px block, now under 768px */
+    body { font-size: 13px; }
+    .app-header h1 { font-size: 1.15rem; }
+    .sidebar .card .card-header { padding: 0.5rem 0.75rem; }
+    .sidebar .card .card-body { padding: 0.75rem; }
+    .sidebar .form-label, .sidebar .form-select, .sidebar .form-control,
+    .sidebar .form-check-label, .sidebar .form-text { font-size: 0.8rem; }
+    .sidebar .btn { padding: 0.375rem 0.75rem; font-size: 0.8rem; }
+    .sidebar .card-header h2, .sidebar .card-header h3 { font-size: 0.9rem; }
+    .active-lot-editor-container { padding: 0.6rem; max-height: 55vh; }
+    .active-lot-editor-container.placeholder { padding: 0.8rem; }
+    .active-lot-editor-container.editor-minimized { padding: 0.4rem; }
     .active-lot-editor-container .lot-editor-header label,
-    .active-lot-editor-container .lot-editor-header input[type="text"].lot-name-input {
-        font-size: 0.8rem;
-    }
-
-    .survey-point-editor h3 {
-        font-size: 0.85rem;
-    }
-
-    .survey-point-editor {
-        min-height: 120px; 
-    }
-
-    .sidebar-section h2,
-    .sidebar-section.suggested-features h2,
-    .export-buttons-section h3 {
-        font-size: 0.95rem;
-    }
-
-    .input-group label,
-    select.crs-select,
-    .select2-container--default .select2-selection--single,
-    input[type="text"].lot-name-input {
-        font-size: 0.8rem;
-    }
-
-    select.crs-select,
-    .select2-container--default .select2-selection--single {
-        height: 34px !important;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: calc(34px - 2px) !important;
-    }
-
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: calc(34px - 2px) !important;
-    }
-
-    .lot-navigator .lot-name-display,
-    #addLotBtnSidebar.btn,
-    .btn-export {
-        font-size: 0.825rem;
-        padding: 0.4rem 0.7rem; 
-    }
-
-    .survey-point-editor .point-headers,
-    .survey-point-editor .survey-point-row {
-        font-size: 0.75rem;
-    }
-
-    .survey-point-editor .survey-point-row input,
-    .survey-point-editor .survey-point-row select {
-        font-size: 0.75rem;
-    }
+    .active-lot-editor-container .lot-editor-header input[type="text"].lot-name-input { font-size: 0.8rem; }
+    .survey-point-editor h3 { font-size: 0.85rem; }
+    .survey-point-editor { min-height: 120px; }
+    .lot-navigator .list-group-item { font-size: 0.825rem; padding: 0.4rem 0.7rem; }
+    .survey-point-editor .point-headers, .survey-point-editor .survey-point-row { font-size: 0.75rem; }
+    .survey-point-editor .survey-point-row input, .survey-point-editor .survey-point-row select { font-size: 0.75rem; }
 }
 
 @media (max-width: 420px) {
-    .active-lot-editor-container {
-        top: 0.25rem;
-        left: 0.25rem;
-        right: 0.25rem;
-        padding: 0.5rem;
-        max-height: 50vh;
-        /* Overall height limit for the floating panel */
-    }
+    .active-lot-editor-container { top: 0.25rem; left: 0.25rem; right: 0.25rem; padding: 0.5rem; max-height: 50vh; }
+    .active-lot-editor-container.editor-minimized { padding: 0.3rem; }
+    .survey-point-editor { min-height: 100px; }
+    /* Adjust flex basis for very small screens if inputs are too cramped */
+    .header-label, .point-label { flex-basis: 50px; font-size: 0.7rem; }
+    .header-ns, .point-ns { flex-basis: 60px; }
+    .header-deg, .point-deg { flex-basis: 60px; }
+    .header-min, .point-min { flex-basis: 60px; }
+    .header-ew, .point-ew { flex-basis: 60px; }
+    .header-dist { flex: 1 1 80px; }
+    .point-dist { flex: 1 1 auto; min-width: 60px; }
+    .header-action, .survey-point-row .btn-remove-point-container { flex-basis: 30px; }
 
-    .active-lot-editor-container.editor-minimized {
-        padding: 0.3rem;
-    }
-
-    .survey-point-editor {
-        /* This general selector will apply here too */
-        min-height: 100px; /* MODIFIED: Increased visual minimum height for very small screens */
-    }
-
-    .point-headers>span,
-    .survey-point-row>* {
-        margin-right: 3px;
-    }
-
-    .header-label,
-    .point-label {
-        flex-basis: 40px;
-        font-size: 0.7rem;
-    }
-
-    .header-ns,
-    .point-ns,
-    .header-ew,
-    .point-ew {
-        flex-basis: 35px;
-    }
-
-    .header-deg,
-    .point-deg,
-    .header-min,
-    .point-min {
-        flex-basis: 35px;
-    }
-
-    .header-dist,
-    .point-dist {
-        flex-basis: 50px;
-    }
-
-    .header-action,
-    .survey-point-row .btn-remove-point-container {
-        flex-basis: 25px;
-    }
-
-    .survey-point-editor .survey-point-row input,
-    .survey-point-editor .survey-point-row select {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.1rem;
-    }
-
-    #addLotBtnSidebar {
-        padding: 0.35rem 0.5rem;
-        font-size: 0.75rem; /* Adjusted from 0.8rem to ensure fit */
-        /* word-break: break-all; */ /* Not using word-break for now */
-    }
+    .survey-point-editor .survey-point-row input, .survey-point-editor .survey-point-row select { font-size: 0.7rem; padding: 0.25rem 0.1rem; }
 }
