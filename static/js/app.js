@@ -205,6 +205,16 @@ $(document).ready(function () {
         L.control.zoom({
             position: 'bottomright' // Add zoom control to bottom right
         }).addTo(map);
+
+        // Add the mousemove event listener here
+        map.on('mousemove', function(e) {
+            const coordinateDisplayElement = document.getElementById('coordinate-display');
+            if (coordinateDisplayElement) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                coordinateDisplayElement.innerHTML = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+            }
+        });
     }
 
     // Basemap selector change event
