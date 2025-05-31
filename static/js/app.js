@@ -1981,4 +1981,19 @@ $(document).ready(function () {
 
     initMap();
     // addLot(); // Start with one empty lot - REMOVED, handled by loadSurvey() or initial state.
+
+    // Hamburger Menu Functionality
+    const hamburgerButton = document.getElementById('hamburger-button');
+    const sidebar = document.querySelector('.sidebar'); // Target by class
+
+    if (hamburgerButton && sidebar) {
+        hamburgerButton.addEventListener('click', function() {
+            sidebar.classList.toggle('sidebar-open');
+            hamburgerButton.classList.toggle('active');
+            
+            // Update aria-expanded
+            const isExpanded = hamburgerButton.getAttribute('aria-expanded') === 'true' || false;
+            hamburgerButton.setAttribute('aria-expanded', !isExpanded);
+        });
+    }
 });

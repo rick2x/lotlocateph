@@ -27,13 +27,19 @@ ul {
 }
 
 :root {
-    --primary-color: #4a90e2;
-    --primary-hover-color: #357ABD;
+    --primary-color: #007bff; /* Updated */
+    --primary-hover-color: #0056b3; /* Updated */
     --secondary-color: #7f8c8d;
-    --success-color: #2ecc71;
-    --danger-color: #e74c3c;
-    --warning-color: #f39c12;
-    --info-color: #3498db;
+    --success-color: #28a745; /* Updated */
+    --success-hover-color: #1e7e34; /* New */
+    --danger-color: #dc3545; /* Updated */
+    --danger-hover-color: #b02a37; /* New - this is for .btn-danger class, distinct from the specific fix earlier */
+    --warning-color: #ffc107; /* Updated */
+    --warning-hover-color: #d39e00; /* New */
+    /* --info-color, --export-dxf-color, --export-geojson-color and their hovers removed for new strategy */
+    --secondary-action-color: #6c757d; /* New secondary/info/export actions */
+    --secondary-action-hover-color: #545b62; /* New secondary/info/export actions hover */
+    --secondary-action-text-color: #ffffff; /* New secondary/info/export actions text */
     --light-bg: #ffffff;
     --medium-bg: #f9fbfd;
     --dark-bg-editor: #3e4a59;
@@ -56,6 +62,7 @@ ul {
     box-shadow: var(--box-shadow-sm);
     display: flex;
     align-items: center;
+    justify-content: space-between; /* To push title and hamburger apart */
     flex-shrink: 0;
 }
 
@@ -141,6 +148,10 @@ ul {
     border-bottom: 1px solid var(--border-color);
 }
 
+.sidebar-section.survey-management {
+    margin-top: 1.5rem; /* Added spacing above Survey Management section */
+}
+
 
 /* --- Map --- */
 .map-container {
@@ -206,7 +217,7 @@ ul {
     max-width: 90%;
     min-width: 280px;
     padding: 1.5rem;
-    color: var(--secondary-color);
+    color: #5c6770; /* Changed from var(--secondary-color) for better readability */
     font-style: italic;
     font-size: 0.9rem;
     text-align: center;
@@ -295,7 +306,7 @@ ul {
     font-size: 0.85rem;
     font-weight: 500;
     margin-bottom: 0.25rem;
-    color: #555;
+    color: var(--text-color); /* Changed from #555 for consistency */
     display: block;
 }
 
@@ -441,8 +452,44 @@ input[type="text"].lot-name-input:focus {
 }
 
 .btn-success:hover {
-    background-color: #25a25a;
-    border-color: #25a25a;
+    background-color: var(--success-hover-color);
+    border-color: var(--success-hover-color);
+}
+
+/* Added .btn-danger, .btn-warning, .btn-info for consistency and future use */
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.btn-danger:hover {
+    background-color: var(--danger-hover-color);
+    border-color: var(--danger-hover-color);
+}
+
+.btn-warning {
+    background-color: var(--warning-color);
+    color: #212529; /* Dark text for yellow warning for better contrast */
+    border-color: var(--warning-color);
+}
+
+.btn-warning:hover {
+    background-color: var(--warning-hover-color);
+    border-color: var(--warning-hover-color);
+    color: #212529;
+}
+
+.btn-info {
+    background-color: var(--secondary-action-color);
+    color: var(--secondary-action-text-color);
+    border-color: var(--secondary-action-color);
+}
+
+.btn-info:hover {
+    background-color: var(--secondary-action-hover-color);
+    border-color: var(--secondary-action-hover-color);
+    color: var(--secondary-action-text-color);
 }
 
 #addLotBtnSidebar {
@@ -578,7 +625,7 @@ input[type="text"].lot-name-input:focus {
 }
 
 .survey-point-editor .btn-remove-point:hover {
-    background-color: #c9302c;
+    background-color: var(--danger-hover-color);
 }
 
 .survey-point-editor .point-label {
@@ -610,47 +657,51 @@ input[type="text"].lot-name-input:focus {
 }
 
 button#exportDxfBtn.btn-export {
-    background-color: #6f42c1;
-    border-color: #6f42c1;
-    color: white;
+    background-color: var(--secondary-action-color);
+    border-color: var(--secondary-action-color);
+    color: var(--secondary-action-text-color);
 }
 
 button#exportDxfBtn.btn-export:hover {
-    background-color: #5a32a3;
-    border-color: #5a32a3;
+    background-color: var(--secondary-action-hover-color);
+    border-color: var(--secondary-action-hover-color);
+    color: var(--secondary-action-text-color);
 }
 
 button#exportGeoJsonBtn.btn-export {
-    background-color: #0056b3;
-    border-color: #0056b3;
-    color: white;
+    background-color: var(--secondary-action-color);
+    border-color: var(--secondary-action-color);
+    color: var(--secondary-action-text-color);
 }
 
 button#exportGeoJsonBtn.btn-export:hover {
-    background-color: #004494;
-    border-color: #004494;
+    background-color: var(--secondary-action-hover-color);
+    border-color: var(--secondary-action-hover-color);
+    color: var(--secondary-action-text-color);
 }
 
 button#exportShapefileBtn.btn-export {
-    background-color: var(--info-color);
-    border-color: var(--info-color);
-    color: white;
+    background-color: var(--secondary-action-color);
+    border-color: var(--secondary-action-color);
+    color: var(--secondary-action-text-color);
 }
 
 button#exportShapefileBtn.btn-export:hover {
-    background-color: #288ba0;
-    border-color: #288ba0;
+    background-color: var(--secondary-action-hover-color);
+    border-color: var(--secondary-action-hover-color);
+    color: var(--secondary-action-text-color);
 }
 
 button#exportKmzBtn.btn-export {
     background-color: var(--warning-color);
     border-color: var(--warning-color);
-    color: var(--text-color);
+    color: #212529; /* Ensure dark text for light warning color */
 }
 
 button#exportKmzBtn.btn-export:hover {
-    background-color: #e99002;
-    border-color: #e99002;
+    background-color: var(--warning-hover-color);
+    border-color: var(--warning-hover-color);
+    color: #212529; /* Ensure dark text for light warning color */
 }
 
 /* --- Messages --- */
@@ -687,8 +738,9 @@ button#exportKmzBtn.btn-export:hover {
 /* --- Responsive Adjustments --- */
 @media (max-width: 1100px) {
     .app-main-container {
+        display: flex; /* Ensure display:flex is explicitly set here if not already */
         flex-direction: column;
-        overflow-y: auto;
+        overflow-y: auto; /* Keep auto */
         margin: 0;
         border-radius: 0;
         box-shadow: none;
@@ -704,8 +756,12 @@ button#exportKmzBtn.btn-export:hover {
     }
 
     .main-content-area {
-        flex-grow: 1;
-        min-height: 300px;
+        flex-grow: 1;    /* Ensure this is active */
+        flex-basis: 0;   /* Add flex-basis */
+        /* height: 60vh; */ /* Remove explicit height */
+        min-height: 50vh; /* Use min-height with flex-basis 0 */
+        position: relative; /* Ensure position is maintained */
+        overflow: hidden;   /* Ensure overflow is maintained */
     }
 
     .active-lot-editor-container {
@@ -738,6 +794,25 @@ button#exportKmzBtn.btn-export:hover {
         max-width: calc(100% - 1rem);
         padding: 1rem;
     }
+}
+
+/* --- Hamburger Button --- */
+.hamburger-button {
+    display: none; /* Hidden by default, shown in media query */
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    z-index: 1300; /* Ensure it's above sidebar */
+}
+
+.hamburger-button span {
+    display: block;
+    width: 22px;
+    height: 3px;
+    background-color: var(--primary-color);
+    margin: 4px 0;
+    transition: all 0.3s ease-in-out;
 }
 
 
@@ -787,23 +862,51 @@ button#exportKmzBtn.btn-export:hover {
         /* margin-left: 35px; /* REMOVED - Revert to default behavior */
     }
     .app-header {
-        /* No changes needed here */
+        /* justify-content: space-between; is now in the base .app-header rule */
+    }
+
+    .hamburger-button {
+        display: block; /* Show hamburger */
+    }
+    
+    .hamburger-button.active span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+    .hamburger-button.active span:nth-child(2) {
+        opacity: 0;
+    }
+    .hamburger-button.active span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
     }
 
     .sidebar {
-        /* This block now only contains styles that were specific to the 767px/768px breakpoint
-           AND are NOT part of the hamburger/collapsible functionality being removed.
-           The hamburger-specific styles (fixed position, transform, etc.) are removed.
-           It will now inherit from .sidebar base and the @media (max-width: 1100px) block.
-        */
-        padding: 0.8rem; /* This was a specific mobile padding, keeping it for now unless full revert to 1100px style is desired. */
-                         /* For full revert, this padding rule could also be removed. */
-                         /* Let's remove it to fully revert to 1100px behavior where padding is 1rem from base .sidebar */
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 280px; /* Adjust as needed */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        background-color: var(--medium-bg); 
+        z-index: 1200; 
+        overflow-y: auto;
+        /* Resetting/overriding styles from @media (max-width: 1100px) */
+        max-height: 100vh; /* Explicitly set for fixed sidebar */
+        border-right: 1px solid var(--border-color); /* Add back a border */
+        border-bottom: none; /* Remove bottom border from 1100px rule */
+        box-shadow: var(--box-shadow-strong); 
+        display: flex; /* Ensure flex context is maintained */
+        flex-direction: column; /* Ensure direction is column */
+        padding: 1rem; /* Restore base padding */
+    }
+
+    .sidebar.sidebar-open {
+        transform: translateX(0);
     }
 
     .active-lot-editor-container {
         padding: 0.6rem; /* From original 767px block */
-        max-height: 55vh; /* From original 767px block */
+        max-height: 75vh; /* Increased for better content visibility */
     }
 
     .active-lot-editor-container.placeholder {
@@ -886,7 +989,7 @@ button#exportKmzBtn.btn-export:hover {
         left: 0.25rem;
         right: 0.25rem;
         padding: 0.5rem;
-        max-height: 50vh;
+        max-height: 75vh; /* Increased for better content visibility */
         /* Overall height limit for the floating panel */
     }
 
