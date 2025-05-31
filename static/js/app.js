@@ -1,7 +1,8 @@
 
 $(document).ready(function () {
     // Constants for LocalStorage Keys
-    const DEFAULT_SAVE_KEY = 'surveyLotsStore_default';
+    const DEFAULT_SAVE_KEY = 'surveyLotsStore_default'; // Used for backward compatibility and general backup
+    const EXPLICIT_DEFAULT_SAVE_NAME = '(Default Survey)';
     const NAMED_SAVES_INDEX_KEY = 'surveyLotsStore_namedSavesIndex';
 
     let isLocalStorageAvailable = true; // Assume available until checked
@@ -139,12 +140,18 @@ $(document).ready(function () {
     // --- UI Update Functions ---
     function updateActiveSaveStatusDisplay() {
         const statusDisplay = $('#activeSaveNameDisplay');
-        let displayName = 'Default Survey';
-        let isNamed = false;
+        let displayName = EXPLICIT_DEFAULT_SAVE_NAME; // Default to the explicit default survey name
+        let isActuallyNamed = false; // Tracks if it's a user-defined name or the explicit default
 
         if (window.currentLoadedSaveName) {
             displayName = window.currentLoadedSaveName;
-            isNamed = true;
+            // Consider EXPLICIT_DEFAULT_SAVE_NAME as "named" for styling if it's the current one
+            isActuallyNamed = true;
+        } else {
+            // If window.currentLoadedSaveName is null, it implies a truly empty session or legacy default.
+            // The displayName will remain EXPLICIT_DEFAULT_SAVE_NAME, but it won't be styled as "named".
+            // This state should ideally be temporary until the first save operation.
+            isActuallyNamed = false;
         }
 
         if (hasUnsavedChanges) {
@@ -152,8 +159,10 @@ $(document).ready(function () {
         }
         statusDisplay.text(displayName);
 
-        if (isNamed) {
-            statusDisplay.closest('#activeSaveStatusContainer').css('background-color', '#d4edda'); // Light green for named
+        // Style based on whether it's considered a named save (including EXPLICIT_DEFAULT_SAVE_NAME)
+        // or the more generic implicit default state (when window.currentLoadedSaveName is null).
+        if (isActuallyNamed) { // This will be true if window.currentLoadedSaveName is set (incl. to EXPLICIT_DEFAULT_SAVE_NAME)
+            statusDisplay.closest('#activeSaveStatusContainer').css('background-color', '#d4edda'); // Light green
         } else {
             statusDisplay.closest('#activeSaveStatusContainer').css('background-color', '#e9ecef'); // Default grey
         }
@@ -338,90 +347,72 @@ $(document).ready(function () {
     }
 
     // Saves the current state of the global surveyLotsStore to localStorage.
-    // If 'name' is provided, it's a "Save As" operation or saving a newly imported named survey.
-    // If 'name' is undefined/null, it saves to the default key AND updates the currently loaded named save if one is active.
     function saveCurrentSurvey(name, isSaveAs = false) {
         // DO NOT call persistActiveLotData() here to prevent recursion.
         // surveyLotsStore is assumed to be up-to-date by the caller.
 
-        // Removed the try...catch block that was here.
-        if (name) { // Saving to a named key (either new "Save As" or updating an existing named save)
-            const saveKey = `surveyLotsStore_data_${name}`;
-                let namedSavesIndex = safeLocalStorageGetJson(NAMED_SAVES_INDEX_KEY, {});
+        let targetSaveName;
+        if (name === null || name === undefined) {
+            targetSaveName = window.currentLoadedSaveName || EXPLICIT_DEFAULT_SAVE_NAME;
+        } else {
+            targetSaveName = name;
+        }
 
-                // Only ask for overwrite confirmation if it's an explicit "Save As" operation 
-                // AND the name already exists.
-                // Check both actual storage item and index for robustness
-                if (isSaveAs && (safeLocalStorageGet(saveKey) !== null || namedSavesIndex[name])) {
-                    if (!confirm(`A survey named "${name}" already exists. Overwrite it?`)) {
-                        displayMessage('info', `Save As for "${name}" cancelled.`);
-                        if (window.currentLoadedSaveName) {
-                             populateNamedSavesDropdown(); 
-                        } else {
-                            $('#savedSurveysDropdown').val(''); 
-                        }
-                        return; 
-                    }
-                }
-                // Proceed to save/overwrite
-                let overallSaveSuccess = true;
+        const specificSaveKey = `surveyLotsStore_data_${targetSaveName}`;
+        let namedSavesIndex = safeLocalStorageGetJson(NAMED_SAVES_INDEX_KEY, {});
 
-                if (!safeLocalStorageSet(saveKey, JSON.stringify(surveyLotsStore))) {
-                    overallSaveSuccess = false;
-                }
-                
-                namedSavesIndex[name] = true; // Add/update in index
-                if (!safeLocalStorageSet(NAMED_SAVES_INDEX_KEY, JSON.stringify(namedSavesIndex))) {
-                    overallSaveSuccess = false;
-                }
-                
-                // Also update the default save with this named save's content
-                if (!safeLocalStorageSet(DEFAULT_SAVE_KEY, JSON.stringify(surveyLotsStore))) {
-                    overallSaveSuccess = false;
-                }
-
-                if (overallSaveSuccess) {
-                    window.currentLoadedSaveName = name; // Set this as the active context
-                    hasUnsavedChanges = false;
-                    if (isSaveAs) {
-                        displayMessage('success', `Survey saved as "${name}" (and updated as current default).`);
-                    } else {
-                        // This case is when saveCurrentSurvey is called with a name, but not as a 'Save As'
-                        // e.g. autosaving an already named survey.
-                        displayMessage('success', `Survey "${name}" updated (and default save also updated).`);
-                    }
+        // Handle 'Save As' confirmation
+        if (isSaveAs && (safeLocalStorageGet(specificSaveKey) !== null || namedSavesIndex[targetSaveName])) {
+            if (!confirm(`A survey named "${targetSaveName}" already exists. Overwrite it?`)) {
+                displayMessage('info', `Save As for "${targetSaveName}" cancelled.`);
+                // If dropdown was manipulated by prompt, ensure it reflects current state
+                if (window.currentLoadedSaveName) {
+                    populateNamedSavesDropdown(); // Reselects current or re-populates
                 } else {
-                    // Message for partial failure might be complex, for now, generic or rely on individual safeSet messages
-                    displayMessage('error', `Failed to fully save "${name}". Check console for details.`);
+                     $('#savedSurveysDropdown').val(''); // Reset dropdown if no current save name
                 }
-                populateNamedSavesDropdown(); // Refresh dropdown to reflect new/updated save
+                return;
+            }
+        }
 
-            } else { // When name is null/undefined (default save context or autosaving current context)
-                let overallSaveSuccess = true;
-                if (!safeLocalStorageSet(DEFAULT_SAVE_KEY, JSON.stringify(surveyLotsStore))) {
-                    overallSaveSuccess = false;
-                }
+        let overallSaveSuccess = true;
 
-                // If a named save is currently active, update that too
-                if (window.currentLoadedSaveName) { 
-                    const currentNamedSaveKey = `surveyLotsStore_data_${window.currentLoadedSaveName}`;
-                    if (!safeLocalStorageSet(currentNamedSaveKey, JSON.stringify(surveyLotsStore))) {
-                        overallSaveSuccess = false;
-                    }
-                }
+        // Save to the target specific key
+        if (!safeLocalStorageSet(specificSaveKey, JSON.stringify(surveyLotsStore))) {
+            overallSaveSuccess = false;
+        }
 
-                if (overallSaveSuccess) {
-                    hasUnsavedChanges = false;
-                    if (window.currentLoadedSaveName) { 
-                        displayMessage('success', `Survey "${window.currentLoadedSaveName}" and default save updated.`);
-                    } else {
-                        displayMessage('success', 'Survey saved to default.');
-                    }
+        // Update named saves index
+        // Ensure even EXPLICIT_DEFAULT_SAVE_NAME is in the index if it's the target
+        namedSavesIndex[targetSaveName] = true;
+        if (!safeLocalStorageSet(NAMED_SAVES_INDEX_KEY, JSON.stringify(namedSavesIndex))) {
+            overallSaveSuccess = false;
+        }
+
+        // Always update the DEFAULT_SAVE_KEY as a backup
+        if (!safeLocalStorageSet(DEFAULT_SAVE_KEY, JSON.stringify(surveyLotsStore))) {
+            overallSaveSuccess = false;
+        }
+
+        if (overallSaveSuccess) {
+            window.currentLoadedSaveName = targetSaveName; // Update current loaded save name
+            hasUnsavedChanges = false;
+
+            if (isSaveAs) {
+                displayMessage('success', `Survey saved as "${targetSaveName}".`);
+            } else {
+                if (targetSaveName === EXPLICIT_DEFAULT_SAVE_NAME) {
+                    displayMessage('success', `Default survey updated.`);
                 } else {
-                    displayMessage('error', `Failed to fully save current survey. Check console for details.`);
+                    displayMessage('success', `Survey "${targetSaveName}" updated.`);
                 }
             }
-        updateActiveSaveStatusDisplay(); // Update display after any save operation
+        } else {
+            displayMessage('error', `Failed to fully save survey "${targetSaveName}". Check console for details.`);
+        }
+
+        populateNamedSavesDropdown(); // Refresh dropdown
+        updateActiveSaveStatusDisplay(); // Update display
     }
 
     function populateNamedSavesDropdown() {
@@ -467,19 +458,18 @@ $(document).ready(function () {
             delete namedSavesIndex[name];
             safeLocalStorageSet(NAMED_SAVES_INDEX_KEY, JSON.stringify(namedSavesIndex));
         }
-        populateNamedSavesDropdown(); 
+        populateNamedSavesDropdown(); // Refresh the dropdown first
 
-            if (window.currentLoadedSaveName === name) {
-                window.currentLoadedSaveName = null;
-                // Optionally, load default or clear workspace
-                displayMessage('info', `Deleted survey "${name}". Active survey cleared. Loading default if available.`);
-                loadSurvey(DEFAULT_SAVE_KEY); // Load default, which will call updateActiveSaveStatusDisplay
-            } else {
-                displayMessage('success', `Survey "${name}" deleted successfully.`);
-                // Status display doesn't change if a non-active survey was deleted
-            }
+        if (window.currentLoadedSaveName === name) {
+            window.currentLoadedSaveName = null; // Clear the active save name
+            displayMessage('info', `Deleted active survey "${name}". Loading next available survey...`);
+            loadSurvey(); // Call with no arguments to trigger default loading logic
+                           // This will also call updateActiveSaveStatusDisplay()
+        } else {
+            displayMessage('success', `Survey "${name}" deleted successfully.`);
+            // updateActiveSaveStatusDisplay() is not needed here as the active survey hasn't changed.
+        }
         // No specific catch here as safe utils handle their errors.
-        // updateActiveSaveStatusDisplay() will be called by loadSurvey if it's invoked.
     }
 
     // --- LOT MANAGEMENT UI (MASTER-DETAIL) ---
@@ -487,98 +477,128 @@ $(document).ready(function () {
     function loadSurvey(name) {
         let surveyDataToLoad = null;
         let sourceDescription = '';
-        
-        if (name) { // Load a named survey
-            sourceDescription = `Named Save '${name}'`;
+        let loadedNameForGlobal = null; // Used to set window.currentLoadedSaveName at the end
+
+        if (name === null || name === undefined) { // Initial page load or explicit load of default context
+            // Try loading from EXPLICIT_DEFAULT_SAVE_NAME first
+            surveyDataToLoad = safeLocalStorageGetJson(`surveyLotsStore_data_${EXPLICIT_DEFAULT_SAVE_NAME}`);
+            if (surveyDataToLoad) {
+                sourceDescription = EXPLICIT_DEFAULT_SAVE_NAME;
+                loadedNameForGlobal = EXPLICIT_DEFAULT_SAVE_NAME;
+            } else {
+                // Fallback to DEFAULT_SAVE_KEY (legacy default)
+                surveyDataToLoad = safeLocalStorageGetJson(DEFAULT_SAVE_KEY);
+                if (surveyDataToLoad) {
+                    sourceDescription = 'Default Survey (legacy)';
+                    loadedNameForGlobal = null; // Signifies old implicit default
+                } else {
+                    sourceDescription = 'New Survey'; // No data found in either default location
+                    loadedNameForGlobal = null; // Will become EXPLICIT_DEFAULT_SAVE_NAME on first save
+                }
+            }
+        } else { // Loading a specifically named survey (could be EXPLICIT_DEFAULT_SAVE_NAME from dropdown)
+            sourceDescription = name; // Use the provided name for description
             surveyDataToLoad = safeLocalStorageGetJson(`surveyLotsStore_data_${name}`);
-        } else { // Load default survey
-            sourceDescription = 'Default Survey';
-            surveyDataToLoad = safeLocalStorageGetJson(DEFAULT_SAVE_KEY);
+            if (surveyDataToLoad) {
+                loadedNameForGlobal = name;
+            } else {
+                // Named survey not found, sourceDescription remains 'name' for error message
+                loadedNameForGlobal = null;
+            }
         }
+
+        // Validate the loaded data (if any)
+        if (surveyDataToLoad && !validateSurveyDataObject(surveyDataToLoad, sourceDescription)) {
+            displayMessage('error', `Data for '${sourceDescription}' is invalid or corrupted and cannot be loaded.`);
+            surveyDataToLoad = null; // Prevent use of corrupted data
+            // Potentially offer to delete if 'name' was provided and it's corrupted
+            if (name && name !== EXPLICIT_DEFAULT_SAVE_NAME && name !== DEFAULT_SAVE_KEY) {
+                 if (confirm(`The named save '${name}' is corrupted. Would you like to remove it?`)) {
+                     deleteSurvey(name); // This will also refresh dropdown and might load default
+                     return; // Exit loadSurvey as deleteSurvey might trigger a new load
+                 }
+            }
+            loadedNameForGlobal = null; // Reset as data is unusable
+        }
+
+        window.currentLoadedSaveName = loadedNameForGlobal; // Set global context based on successful load
 
         if (surveyDataToLoad) {
-            if (!validateSurveyDataObject(surveyDataToLoad, sourceDescription)) {
-                displayMessage('error', `Data for '${sourceDescription}' is invalid or corrupted and cannot be loaded.`);
-                surveyDataToLoad = null; // Prevent use of corrupted data
-                // If it's a named save that's corrupt, we might want to offer to remove it
-                // if (name) { 
-                //     if (confirm(`The named save '${name}' is corrupted. Would you like to remove it?`)) {
-                //         deleteSurvey(name); // This will also refresh dropdown and load default
-                //     }
-                // }
-                // If it's the default survey that's corrupt, loadSurvey(null) will be called effectively,
-                // which leads to addLot() if surveyLotsStore is empty.
-            }
-        }
-
-        if (surveyDataToLoad) { // Re-check surveyDataToLoad as it might have been nulled by validation
             surveyLotsStore = surveyDataToLoad;
-            window.currentLoadedSaveName = (name && name !== DEFAULT_SAVE_KEY) ? name : null; 
-            
             // Refresh UI - This is a critical part and needs to correctly reset and repopulate
-                lotListUL.empty();
-                activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">Select a lot from the list or add a new one to start editing.</div>').addClass('placeholder');
-                activeLotId = null;
-                lotCounter = 0; // Reset counter, will be updated by re-adding lots
+            lotListUL.empty();
+            activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">Select a lot from the list or add a new one to start editing.</div>').addClass('placeholder');
+            activeLotId = null;
+            lotCounter = 0; // Reset counter, will be updated by re-adding lots
 
-                let firstLotId = null;
-                let maxLotNum = 0;
+            let firstLotId = null;
+            let maxLotNum = 0;
 
-                if (Object.keys(surveyLotsStore).length > 0) {
-                    for (const lotId in surveyLotsStore) {
-                        if (surveyLotsStore.hasOwnProperty(lotId)) {
-                            const lotData = surveyLotsStore[lotId];
-                            const lotNum = lotData.num || (parseInt(lotId.split('_')[1],10) || ++maxLotNum);
-                            maxLotNum = Math.max(maxLotNum, lotNum);
+            if (Object.keys(surveyLotsStore).length > 0) {
+                for (const lotId in surveyLotsStore) {
+                    if (surveyLotsStore.hasOwnProperty(lotId)) {
+                        const lotData = surveyLotsStore[lotId];
+                        const lotNum = lotData.num || (parseInt(lotId.split('_')[1],10) || ++maxLotNum);
+                        maxLotNum = Math.max(maxLotNum, lotNum);
 
-                            const listItemHTML = `<li data-lot-id="${lotId}">` +
-                                                `<span class="lot-name-display">${$('<div/>').text(lotData.name).html()}</span>` +
-                                                `<button class="btn-remove-lot-list" title="Remove ${$('<div/>').text(lotData.name).html()}">×</button>` +
-                                             `</li>`;
-                            lotListUL.append(listItemHTML);
-                            if (!firstLotId) firstLotId = lotId;
+                        const listItemHTML = `<li data-lot-id="${lotId}">` +
+                                            `<span class="lot-name-display">${$('<div/>').text(lotData.name).html()}</span>` +
+                                            `<button class="btn-remove-lot-list" title="Remove ${$('<div/>').text(lotData.name).html()}">×</button>` +
+                                         `</li>`;
+                        lotListUL.append(listItemHTML);
+                        if (!firstLotId) firstLotId = lotId;
 
-                            // Ensure feature groups are ready for plotting
-                            if (map && !plottedFeatureGroups[lotId]) {
-                                plottedFeatureGroups[lotId] = L.featureGroup().addTo(map);
-                            } else if (map && plottedFeatureGroups[lotId]) {
-                                plottedFeatureGroups[lotId].clearLayers(); // Clear existing layers if any
-                            }
+                        // Ensure feature groups are ready for plotting
+                        if (map && !plottedFeatureGroups[lotId]) {
+                            plottedFeatureGroups[lotId] = L.featureGroup().addTo(map);
+                        } else if (map && plottedFeatureGroups[lotId]) {
+                            plottedFeatureGroups[lotId].clearLayers(); // Clear existing layers if any
                         }
                     }
-                    lotCounter = maxLotNum; // Set lotCounter to the highest existing lot number
-                    if (firstLotId) {
-                        setActiveLot(firstLotId); // This will also render the editor
-                    }
-                } else { // No lots in the loaded data, effectively a clear state
-                    addLot(); // Add a fresh "Lot 1"
                 }
-                
-                populateNamedSavesDropdown(); // Refresh dropdown to show current selection
-                triggerMapUpdateWithDebounce(); // Update map with loaded data
-                if (name && name !== DEFAULT_SAVE_KEY) {
-                    displayMessage('success', `Survey "${name}" loaded.`);
-                } else if (name === DEFAULT_SAVE_KEY) {
-                     displayMessage('info', `Default survey data loaded.`);
-                } else {
-                     // Initial load, no specific user action, maybe no message or a subtle one
+                lotCounter = maxLotNum; // Set lotCounter to the highest existing lot number
+                if (firstLotId) {
+                    setActiveLot(firstLotId); // This will also render the editor
                 }
-
-            } else {
-                if (name && name !== DEFAULT_SAVE_KEY) { // Specific named survey not found
-                    displayMessage('error', `Could not find saved survey "${name}".`);
-                    window.currentLoadedSaveName = null;
-                } else if (name === DEFAULT_SAVE_KEY) { // Default survey not found
-                    // This is normal on first visit, don't show error. Maybe show info or do nothing.
-                    // displayMessage('info', 'No default survey found. Starting fresh.');
-                    // Initialize with a fresh lot if no default data
-                    if (Object.keys(surveyLotsStore).length === 0) { // Check if store is already empty
-                        addLot(); 
-                    }
-                }
-                // If loading default and it's not there, it will proceed to load with a new empty lot via addLot()
-                // which is usually called at the end of document.ready
+            } else { // No lots in the loaded data, effectively a clear state or data was invalid
+                surveyLotsStore = {}; // Ensure store is empty if data was invalid/null
+                addLot(); // Add a fresh "Lot 1"
             }
+
+            // Display message based on what was actually loaded or attempted
+            if (name === null || name === undefined) { // Initial load attempt
+                if (sourceDescription === EXPLICIT_DEFAULT_SAVE_NAME) {
+                    displayMessage('success', `${EXPLICIT_DEFAULT_SAVE_NAME} loaded.`);
+                } else if (sourceDescription === 'Default Survey (legacy)') {
+                    displayMessage('info', `Legacy default survey loaded. Consider re-saving.`);
+                } else {
+                    // New survey, no message or a subtle "Welcome"
+                }
+            } else { // Attempt to load a specific name
+                 displayMessage('success', `Survey "${sourceDescription}" loaded.`);
+            }
+
+        } else { // surveyDataToLoad is null (either not found or invalidated)
+            surveyLotsStore = {}; // Clear data
+            window.currentLoadedSaveName = null; // Ensure no named context if load failed
+
+            lotListUL.empty();
+            activeLotEditorArea.html('<div class="active-lot-editor-container placeholder">Select a lot or add a new one.</div>').addClass('placeholder');
+            activeLotId = null;
+            lotCounter = 0;
+
+            if (name && name !== DEFAULT_SAVE_KEY && name !== EXPLICIT_DEFAULT_SAVE_NAME) { // Specific named survey not found and not due to corruption handled above
+                displayMessage('error', `Could not find saved survey "${name}". Starting fresh.`);
+            } else if ((name === null || name === undefined) && sourceDescription === 'New Survey') {
+                 // This is a fresh start, no specific message needed beyond UI state.
+                 // displayMessage('info', 'No default survey found. Starting fresh.');
+            }
+            addLot(); // Initialize with a fresh lot
+        }
+
+        populateNamedSavesDropdown(); // Refresh dropdown
+        updateActiveSaveStatusDisplay(); // Update status display based on window.currentLoadedSaveName
+        triggerMapUpdateWithDebounce(); // Update map
     }
 
     function clearAllLots() {
