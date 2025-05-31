@@ -10,6 +10,8 @@ import re
 # Third-party imports
 from flask import current_app
 
+# Pre-compiled regular expression for parsing survey bearing lines
+BEARING_REGEX = re.compile(r'([NS])\s*(\d{1,2})D\s*(\d{1,2})[′\']\s*([EW])', re.IGNORECASE)
 
 def parse_survey_line_to_bearing_distance(line_str):
     """
@@ -42,11 +44,7 @@ def parse_survey_line_to_bearing_distance(line_str):
         return None
 
     # Regex for bearing: e.g., N 01D 02′ E or S89D59'W
-    match = re.match(
-        r'([NS])\s*(\d{1,2})D\s*(\d{1,2})[′\']\s*([EW])',
-        parts[0].strip(),
-        re.IGNORECASE
-    )
+    match = BEARING_REGEX.match(parts[0].strip())
     if not match:
         current_app.logger.warning(f"Invalid bearing format: {parts[0]} in {line_str}")
         return None
