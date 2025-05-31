@@ -11,7 +11,8 @@ import re
 from flask import current_app
 
 # Pre-compiled regular expression for parsing survey bearing lines
-BEARING_REGEX = re.compile(r'([NS])\s*(\d{1,2})D\s*(\d{1,2})[′\']\s*([EW])', re.IGNORECASE)
+# Allows N/S, space(s), 1-2 digits for deg, D or d, space(s), 1-2 digits for min, prime variants, space(s), E/W
+BEARING_REGEX = re.compile(r'([NS])\s+(\d{1,2})[Dd]\s+(\d{1,2})[′\'’]\s+([EW])', re.IGNORECASE)
 
 def parse_survey_line_to_bearing_distance(line_str):
     """
@@ -149,7 +150,7 @@ def decimal_azimuth_to_bearing_string(azimuth_deg):
     if azimuth_deg is None:
         return "N/A"
 
-    epsilon = 1e-6
+    epsilon = 1e-9 # Made epsilon smaller for finer precision before snapping to cardinal
 
     if abs(azimuth_deg - 0.0) < epsilon or abs(azimuth_deg - 360.0) < epsilon:
         return "Due North"
@@ -188,7 +189,8 @@ def decimal_azimuth_to_bearing_string(azimuth_deg):
     minutes_float = (bearing_angle - degrees) * 60.0
     minutes = int(minutes_float)
     seconds_float = (minutes_float - minutes) * 60.0
-    seconds = int(round(seconds_float))
+    # Standard rounding for .5 is to nearest even, use custom to round .5 up
+    seconds = int(seconds_float + 0.5)
 
     if seconds == 60:
         seconds = 0
@@ -197,8 +199,17 @@ def decimal_azimuth_to_bearing_string(azimuth_deg):
         minutes = 0
         degrees += 1
     
-    # Bearing angles should be < 90, so degrees should not exceed 89 here.
-    # If degrees became 90, it implies the original azimuth was a cardinal direction,
-    # which should have been caught by the initial checks.
+    # Bearing angles should be < 90 for non-cardinal.
+    # If normalization results in degrees == 90 (e.g. 89deg 59min 60sec -> 90deg 0min 0sec),
+    # it's a cardinal direction.
+    if degrees == 90 and minutes == 0 and seconds == 0:
+        if ew_char == 'E': return "Due East"  # Covers N90E and S90E
+        if ew_char == 'W': return "Due West"  # Covers N90W and S90W
+
+    # Similarly, if degrees is 0, minutes is 0, seconds is 0 after normalization
+    # it should correspond to N or S cardinal direction.
+    if degrees == 0 and minutes == 0 and seconds == 0:
+        if ns_char == 'N': return "Due North" # Covers N00D00'00" E and N00D00'00" W effectively
+        if ns_char == 'S': return "Due South" # Covers S00D00'00" E and S00D00'00" W effectively
 
     return f"{ns_char} {degrees:02d}D{minutes:02d}′{seconds:02d}″ {ew_char}"
