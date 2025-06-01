@@ -13,7 +13,7 @@ body {
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     background-color: var(--md-sys-color-background);
     color: var(--md-sys-color-on-background);
     font-size: 14px;
@@ -47,11 +47,16 @@ ul {
     /* --text-color: #333d48; */
     /* --border-color: #e1e5eb; */
     --border-radius: 6px;
-    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --box-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-    --box-shadow-strong: 0 6px 18px rgba(0, 0, 0, 0.12);
     /* For floating panel */
     /* --text-muted: #6c757d; */
+
+    /* Material Design Elevations (Simplified) */
+    --md-elevation-1: 0 1px 2px 0 rgba(0,0,0,0.05), 0 1px 3px 1px rgba(0,0,0,0.04);
+    --md-elevation-2: 0 2px 4px -1px rgba(0,0,0,0.06), 0 4px 5px 0 rgba(0,0,0,0.05);
+    --md-elevation-3: 0 3px 5px -1px rgba(0,0,0,0.07), 0 6px 10px 0 rgba(0,0,0,0.06);
+    --md-elevation-6: 0 6px 10px 0 rgba(0,0,0,0.08), 0 1px 18px 0 rgba(0,0,0,0.07);
+    --md-elevation-8: 0 8px 10px 1px rgba(0,0,0,0.09), 0 3px 14px 2px rgba(0,0,0,0.08);
+    --md-elevation-12: 0 12px 17px 2px rgba(0,0,0,0.1), 0 5px 22px 4px rgba(0,0,0,0.09);
 
   --md-sys-color-primary: rgb(76 102 43);
   --md-sys-color-surface-tint: rgb(76 102 43);
@@ -109,7 +114,7 @@ ul {
     background-color: var(--md-sys-color-surface-container-low);
     padding: 0.8rem 1.5rem;
     border-bottom: 1px solid var(--md-sys-color-outline-variant);
-    box-shadow: var(--box-shadow-sm);
+    box-shadow: var(--md-elevation-2);
     display: flex;
     align-items: center;
     justify-content: space-between; /* To push title and hamburger apart */
@@ -118,18 +123,19 @@ ul {
 
 .app-header h1 {
     color: var(--md-sys-color-primary);
-    font-size: 1.3rem;
-    font-weight: 600;
+    font-size: 1.75rem; /* Target: 28px */
+    font-weight: 500;
     margin: 0;
+    line-height: 1.2; /* Suggested for headings */
 }
 
 .disclaimer {
     position: relative;
     padding: 0.6rem 2.5rem 0.6rem 1rem;
     margin: 0.75rem auto;
-    background-color: #fff9e0;
-    color: #7a641d;
-    border: 1px solid #ffecb3;
+    background-color: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    border: 1px solid var(--md-sys-color-tertiary);
     border-radius: var(--border-radius);
     font-size: 0.8rem;
     max-width: 90%;
@@ -143,7 +149,7 @@ ul {
     right: 0.5rem;
     font-size: 1.2rem;
     font-weight: bold;
-    color: #7a641d;
+    color: var(--md-sys-color-on-tertiary-container);
     cursor: pointer;
     line-height: 1;
     padding: 0.2rem 0.4rem;
@@ -160,7 +166,7 @@ ul {
     overflow: hidden;
     margin: 0 1rem 1rem 1rem;
     border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+    /* box-shadow: var(--box-shadow); REMOVED - Let child elements define elevation */
     background-color: var(--md-sys-color-surface);
     min-height: 0;
 }
@@ -189,17 +195,23 @@ ul {
 
 .sidebar-section h2,
 .sidebar-section.suggested-features h2 {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.25rem; /* Target: 20px */
+    font-weight: 500;
     color: var(--md-sys-color-primary);
     margin-top: 0;
+    line-height: 1.2; /* Suggested for headings */
     margin-bottom: 0.8rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--md-sys-color-outline-variant); /* Also update border color here */
 }
 
 .sidebar-section.survey-management {
-    margin-top: 1.5rem; /* Added spacing above Survey Management section */
+    margin-top: 1.5rem; /* Existing margin */
+    background-color: var(--md-sys-color-surface-container);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem; /* Added for spacing between cards */
+    box-shadow: var(--md-elevation-1);
 }
 
 
@@ -249,7 +261,7 @@ ul {
     background-color: var(--md-sys-color-surface);
     border: 1px solid var(--md-sys-color-outline);
     border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow-strong);
+    box-shadow: var(--md-elevation-8);
     z-index: 1050;
     padding: 1rem;
     display: flex;
@@ -296,6 +308,10 @@ ul {
 .btn-toggle-editor:hover {
     background-color: var(--md-sys-color-surface-container-high); /* Updated */
     border-color: var(--md-sys-color-outline-variant); /* Updated */
+}
+
+.btn-toggle-editor:active {
+    filter: brightness(0.9);
 }
 
 .active-lot-editor-container.editor-minimized {
@@ -349,12 +365,12 @@ ul {
 
 /* --- Form Elements & Controls --- */
 .input-group {
-    margin-bottom: 0.9rem;
+    margin-bottom: 1rem; /* Standardized to 1rem */
 }
 
 .input-group label {
-    font-size: 0.85rem;
-    font-weight: 500;
+    font-size: 0.875rem; /* Target: 14px */
+    font-weight: 400;
     margin-bottom: 0.25rem;
     color: var(--md-sys-color-on-surface); /* Changed from #555 for consistency */
     display: block;
@@ -364,7 +380,7 @@ select.crs-select,
 .select2-container--default .select2-selection--single,
 input[type="text"].lot-name-input {
     width: 100%;
-    height: 36px !important;
+    height: 40px !important; /* Updated height */
     font-size: 0.875rem;
     border: 1px solid var(--md-sys-color-outline);
     border-radius: var(--border-radius);
@@ -377,8 +393,10 @@ input[type="text"].lot-name-input {
 select.crs-select:focus,
 input[type="text"].lot-name-input:focus {
     border-color: var(--md-sys-color-primary);
+    border-width: 2px;
     outline: 0;
-    box-shadow: 0 0 0 0.2rem var(--md-sys-color-primary-container);
+    box-shadow: none; /* Removed Bootstrap-like shadow */
+    padding: calc(0.3rem - 1px) calc(0.6rem - 1px); /* Adjust padding for thicker border */
 }
 
 .select2-container--default .select2-selection--single {
@@ -386,12 +404,12 @@ input[type="text"].lot-name-input:focus {
 }
 
 .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: calc(36px - 2px) !important;
+    line-height: calc(40px - 2px) !important; /* Adjusted for 40px height */
     padding-left: 0.6rem !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: calc(36px - 2px) !important;
+    height: calc(40px - 2px) !important; /* Adjusted for 40px height */
 }
 
 .global-settings small {
@@ -407,8 +425,16 @@ input[type="text"].lot-name-input:focus {
 }
 
 /* --- Lot Navigator --- */
+.lot-navigator { /* Now styled as a card */
+    background-color: var(--md-sys-color-surface-container);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    box-shadow: var(--md-elevation-1);
+}
+
 .lot-navigator ul {
-    margin-top: 0.25rem;
+    margin-top: 0; /* Adjusted as card has padding now */
     list-style: none;
 }
 
@@ -416,13 +442,18 @@ input[type="text"].lot-name-input:focus {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.55rem 0.7rem;
+    padding: 0.75rem 1rem; /* Updated padding */
     border: 1px solid transparent;
     border-radius: var(--border-radius);
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.25rem; /* Standardized to 0.25rem (4dp) */
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s;
-    font-size: 0.875rem;
+    font-size: 0.9rem; /* Target: 14.4px */
+}
+
+.lot-navigator li:active { /* Active press state */
+    filter: brightness(0.9);
+    /* transition: filter 0.05s linear; /* Quicker feedback for active state */
 }
 
 .lot-navigator li:hover {
@@ -472,9 +503,10 @@ input[type="text"].lot-name-input:focus {
 
 /* --- Buttons --- */
 .btn {
-    padding: 0.5rem 0.9rem;
+    padding: 0.6rem 1.2rem; /* Updated padding */
     font-size: 0.875rem;
     font-weight: 500;
+    box-shadow: var(--md-elevation-1); /* Resting elevation */
     border-radius: var(--border-radius);
     cursor: pointer;
     text-align: center;
@@ -483,6 +515,11 @@ input[type="text"].lot-name-input:focus {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.btn:active {
+    filter: brightness(0.95);
+    box-shadow: var(--md-elevation-3);
 }
 
 .btn-block {
@@ -500,6 +537,7 @@ input[type="text"].lot-name-input:focus {
     background-color: var(--md-sys-color-primary-container);
     color: var(--md-sys-color-on-primary-container);
     border-color: var(--md-sys-color-primary-container);
+    box-shadow: var(--md-elevation-2); /* Hover elevation */
 }
 
 .btn-success {
@@ -512,6 +550,7 @@ input[type="text"].lot-name-input:focus {
     background-color: var(--md-sys-color-primary-container);
     color: var(--md-sys-color-on-primary-container);
     border-color: var(--md-sys-color-primary-container);
+    box-shadow: var(--md-elevation-2); /* Hover elevation */
 }
 
 /* Added .btn-danger, .btn-warning, .btn-info for consistency and future use */
@@ -525,6 +564,7 @@ input[type="text"].lot-name-input:focus {
     background-color: var(--md-sys-color-error-container);
     color: var(--md-sys-color-on-error-container);
     border-color: var(--md-sys-color-error-container);
+    box-shadow: var(--md-elevation-2); /* Hover elevation */
 }
 
 .btn-warning {
@@ -537,6 +577,7 @@ input[type="text"].lot-name-input:focus {
     background-color: var(--md-sys-color-tertiary-container);
     color: var(--md-sys-color-on-tertiary-container);
     border-color: var(--md-sys-color-tertiary-container);
+    box-shadow: var(--md-elevation-2); /* Hover elevation */
 }
 
 .btn-info {
@@ -549,6 +590,7 @@ input[type="text"].lot-name-input:focus {
     background-color: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
     border-color: var(--md-sys-color-secondary-container);
+    box-shadow: var(--md-elevation-2); /* Hover elevation */
 }
 
 #addLotBtnSidebar {
@@ -569,10 +611,12 @@ input[type="text"].lot-name-input:focus {
 }
 
 .survey-point-editor h3 {
-    font-size: 0.9rem;
+    font-size: 1rem; /* Target: 16px */
+    font-weight: 500;
     color: var(--md-sys-color-on-surface-variant); /* Updated from #e0e5ea */
     padding-bottom: 0.5rem;
     margin-top: 0;
+    line-height: 1.2; /* Suggested for headings */
     margin-bottom: 0.8rem;
     border-bottom: 1px solid var(--md-sys-color-outline); /* Updated from #556270 */
     width: 100%;
@@ -587,13 +631,13 @@ input[type="text"].lot-name-input:focus {
     color: var(--md-sys-color-on-surface-variant); /* Updated from #a8b5c4 */
     font-size: 0.75rem;
     padding-bottom: 0.4rem;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.5rem; /* Standardized to 0.5rem (8dp) */
     display: flex;
 }
 
 .survey-point-editor .survey-point-row {
     font-size: 0.8rem;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.25rem; /* Standardized to 0.25rem (4dp) */
     padding: 0.15rem 0;
     display: flex;
     align-items: center;
@@ -602,7 +646,7 @@ input[type="text"].lot-name-input:focus {
 /* Column Definitions - Allow shrinking */
 .point-headers>span,
 .survey-point-row>* {
-    margin-right: 6px; /* Slightly increased for better spacing */
+    margin-right: 0.5rem; /* Standardized to 0.5rem (approx 8dp) */
     box-sizing: border-box;
     padding: 2px; /* Added small padding for content within flex items */
     text-align: center; /* Center text for most items */
@@ -687,24 +731,34 @@ input[type="text"].lot-name-input:focus {
     background-color: var(--md-sys-color-error-container);
 }
 
+.survey-point-editor .btn-remove-point:active {
+    filter: brightness(0.9);
+}
+
 .survey-point-editor .point-label {
     font-weight: 500;
 }
 
 /* --- Export Buttons --- */
 .export-buttons-section {
-    margin-top: auto;
-    padding-top: 1rem;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
+    margin-top: auto; /* Keep this to push to bottom */
+    background-color: var(--md-sys-color-surface-container);
+    padding: 1rem; /* Card padding */
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem; /* Spacing, though it's last, good for consistency */
+    box-shadow: var(--md-elevation-1);
+    /* padding-top: 1rem; REMOVED - Handled by card padding */
+    /* border-top: 1px solid var(--md-sys-color-outline-variant); REMOVED - Card style provides separation */
 }
 
 /* Styles for .export-buttons-section h3 */
 .export-buttons-section h3 {
-    font-size: 1rem;
-    font-weight: 500; /* Typical weight for h3 if h2 is 600 */
+    font-size: 1.125rem; /* Target: 18px */
+    font-weight: 500;
     color: var(--md-sys-color-primary);
     margin-top: 0;
     margin-bottom: 0.6rem;
+    line-height: 1.2; /* Suggested for headings */
     /* No border-bottom, to differentiate from h2 or per original design */
 }
 
@@ -721,10 +775,14 @@ button#exportDxfBtn.btn-export {
     color: var(--md-sys-color-on-secondary);
 }
 
-button#exportDxfBtn.btn-export:hover {
+button#exportDxfBtn.btn-export:hover,
+button#exportGeoJsonBtn.btn-export:hover,
+button#exportShapefileBtn.btn-export:hover,
+button#exportKmzBtn.btn-export:hover {
     background-color: var(--md-sys-color-secondary-container);
     border-color: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
+    box-shadow: var(--md-elevation-2); /* Hover elevation */
 }
 
 button#exportGeoJsonBtn.btn-export {
@@ -733,11 +791,7 @@ button#exportGeoJsonBtn.btn-export {
     color: var(--md-sys-color-on-secondary);
 }
 
-button#exportGeoJsonBtn.btn-export:hover {
-    background-color: var(--md-sys-color-secondary-container);
-    border-color: var(--md-sys-color-secondary-container);
-    color: var(--md-sys-color-on-secondary-container);
-}
+/* Removed individual hover rules for GeoJSON, Shapefile, KMZ as they are grouped above */
 
 button#exportShapefileBtn.btn-export {
     background-color: var(--md-sys-color-secondary);
@@ -745,11 +799,7 @@ button#exportShapefileBtn.btn-export {
     color: var(--md-sys-color-on-secondary);
 }
 
-button#exportShapefileBtn.btn-export:hover {
-    background-color: var(--md-sys-color-secondary-container);
-    border-color: var(--md-sys-color-secondary-container);
-    color: var(--md-sys-color-on-secondary-container);
-}
+/* Removed individual hover rules for GeoJSON, Shapefile, KMZ as they are grouped above */
 
 button#exportKmzBtn.btn-export {
     background-color: var(--md-sys-color-secondary); /* Already updated via .btn-info mapping */
@@ -757,11 +807,7 @@ button#exportKmzBtn.btn-export {
     color: var(--md-sys-color-on-secondary);  /* Already updated via .btn-info mapping */
 }
 
-button#exportKmzBtn.btn-export:hover {
-    background-color: var(--md-sys-color-secondary-container); /* Already updated via .btn-info mapping */
-    border-color: var(--md-sys-color-secondary-container); /* Already updated via .btn-info mapping */
-    color: var(--md-sys-color-on-secondary-container); /* Already updated via .btn-info mapping */
-}
+/* Removed individual hover rules for GeoJSON, Shapefile, KMZ as they are grouped above */
 
 /* --- Messages --- */
 .message-area {
@@ -863,9 +909,14 @@ button#exportKmzBtn.btn-export:hover {
     display: none; /* Hidden by default, shown in media query */
     background: none;
     border: none;
-    padding: 0.5rem;
+    padding: 0.8rem; /* Increased padding for better touch target */
     cursor: pointer;
     z-index: 1300; /* Ensure it's above sidebar */
+    transition: background-color 0.1s linear; /* Quick transition for active state */
+}
+
+.hamburger-button:active {
+    background-color: var(--md-sys-color-surface-container-high);
 }
 
 .hamburger-button span {
@@ -956,7 +1007,7 @@ button#exportKmzBtn.btn-export:hover {
         max-height: 100vh; /* Explicitly set for fixed sidebar */
         border-right: 1px solid var(--md-sys-color-outline-variant); /* Add back a border */
         border-bottom: none; /* Remove bottom border from 1100px rule */
-        box-shadow: var(--box-shadow-strong); 
+        box-shadow: var(--md-elevation-8); 
         display: flex; /* Ensure flex context is maintained */
         flex-direction: column; /* Ensure direction is column */
         padding: 1rem; /* Restore base padding */
