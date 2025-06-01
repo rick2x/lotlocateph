@@ -131,9 +131,9 @@ $(document).ready(function () {
     }
 
     // Basemap Persistence - Load (using safe utility)
-    let initialBasemapKey = 'esriImagery'; // Default value if localStorage is not available
+    let initialBasemapKey = 'blank'; // Default value if localStorage is not available
     if (isLocalStorageAvailable) {
-        initialBasemapKey = safeLocalStorageGet('selectedBasemap') || 'esriImagery';
+        initialBasemapKey = safeLocalStorageGet('selectedBasemap') || 'blank';
     }
     $('#basemapSelect').val(initialBasemapKey);
 
@@ -171,6 +171,14 @@ $(document).ready(function () {
     // --- INITIALIZATION ---
 
     function updateBasemap(selectedBasemapKey) {
+        if (selectedBasemapKey === 'blank') {
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+            currentTileLayer = null;
+            return;
+        }
+
         const selectedLayerConfig = basemaps[selectedBasemapKey];
 
         if (!selectedLayerConfig) {
@@ -200,8 +208,6 @@ $(document).ready(function () {
             zoomControl: false // Disable the default zoom control
         }).setView([12.8797, 121.7740], 6); // Default view over the Philippines
         
-        updateBasemap(initialBasemapKey); // Use the loaded/default key
-
         L.control.zoom({
             position: 'bottomright' // Add zoom control to bottom right
         }).addTo(map);
@@ -215,6 +221,7 @@ $(document).ready(function () {
                 coordinateDisplayElement.innerHTML = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
             }
         });
+        updateBasemap(initialBasemapKey); // Apply the initial basemap
     }
 
     // Basemap selector change event
@@ -245,6 +252,14 @@ $(document).ready(function () {
     // Event listeners for map display toggles
     $('#toggleTieLines, #togglePobMarkers, #toggleParcelVertices').on('change', function() {
         triggerMapUpdateWithDebounce();
+    });
+
+    $('#toggleSurveyData').on('change', function() {
+        if ($(this).is(':checked')) {
+            fetchAndPlotMapData(); // Re-plot data if checked
+        } else {
+            clearAllLotMapLayers(false); // Clear lot layers if unchecked, keep ref marker
+        }
     });
 
     $('#closeDisclaimerBtn').on('click', function () {
@@ -1360,6 +1375,12 @@ $(document).ready(function () {
 
     function fetchAndPlotMapData() {
         clearMessages();
+
+        if (!$('#toggleSurveyData').is(':checked')) {
+            clearAllLotMapLayers(false);
+            return;
+        }
+
         if (!validateSurveyInputs(false, null)) { // Validate without showing alerts here, as it's for map update
             displayMessage('warning', "Map not updated due to invalid or incomplete inputs.");
             return;
@@ -1475,6 +1496,10 @@ $(document).ready(function () {
     const lotColors = ['#007bff', '#6f42c1', '#fd7e14', '#28a745', '#dc3545', '#17a2b8', '#ffc107', '#6c757d'];
 
     function plotMultiLotDataOnMap(dataPerLot, referencePlotData) {
+        if (!$('#toggleSurveyData').is(':checked')) {
+            clearAllLotMapLayers(false); // Clear previous lot layers but keep main ref if any
+            return;
+        }
         if (!map) {
             initMap(); // Should already be initialized, but as a fallback
         }

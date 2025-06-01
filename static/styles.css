@@ -14,8 +14,8 @@ body {
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    background-color: #f4f7fc;
-    color: #333d48;
+    background-color: var(--md-sys-color-background);
+    color: var(--md-sys-color-on-background);
     font-size: 14px;
     line-height: 1.6;
     display: flex;
@@ -27,38 +27,88 @@ ul {
 }
 
 :root {
-    --primary-color: #007bff; /* Updated */
-    --primary-hover-color: #0056b3; /* Updated */
-    --secondary-color: #7f8c8d;
-    --success-color: #28a745; /* Updated */
-    --success-hover-color: #1e7e34; /* New */
-    --danger-color: #dc3545; /* Updated */
-    --danger-hover-color: #b02a37; /* New - this is for .btn-danger class, distinct from the specific fix earlier */
-    --warning-color: #ffc107; /* Updated */
-    --warning-hover-color: #d39e00; /* New */
+    /* --primary-color: #007bff; */ /* Updated */
+    /* --primary-hover-color: #0056b3; */ /* Updated */
+    /* --secondary-color: #7f8c8d; */
+    /* --success-color: #28a745; */ /* Updated */
+    /* --success-hover-color: #1e7e34; */ /* New */
+    /* --danger-color: #dc3545; */ /* Updated */
+    /* --danger-hover-color: #b02a37; */ /* New - this is for .btn-danger class, distinct from the specific fix earlier */
+    /* --warning-color: #ffc107; */ /* Updated */
+    /* --warning-hover-color: #d39e00; */ /* New */
     /* --info-color, --export-dxf-color, --export-geojson-color and their hovers removed for new strategy */
-    --secondary-action-color: #6c757d; /* New secondary/info/export actions */
-    --secondary-action-hover-color: #545b62; /* New secondary/info/export actions hover */
-    --secondary-action-text-color: #ffffff; /* New secondary/info/export actions text */
-    --light-bg: #ffffff;
-    --medium-bg: #f9fbfd;
-    --dark-bg-editor: #3e4a59;
-    --text-color-light: #f0f4f8;
-    --text-color: #333d48;
-    --border-color: #e1e5eb;
+    /* --secondary-action-color: #6c757d; */ /* New secondary/info/export actions */
+    /* --secondary-action-hover-color: #545b62; */ /* New secondary/info/export actions hover */
+    /* --secondary-action-text-color: #ffffff; */ /* New secondary/info/export actions text */
+    /* --light-bg: #ffffff; */
+    /* --medium-bg: #f9fbfd; */
+    /* --dark-bg-editor: #3e4a59; */
+    /* --text-color-light: #f0f4f8; */
+    /* --text-color: #333d48; */
+    /* --border-color: #e1e5eb; */
     --border-radius: 6px;
     --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     --box-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
     --box-shadow-strong: 0 6px 18px rgba(0, 0, 0, 0.12);
     /* For floating panel */
-    --text-muted: #6c757d;
+    /* --text-muted: #6c757d; */
+
+  --md-sys-color-primary: rgb(76 102 43);
+  --md-sys-color-surface-tint: rgb(76 102 43);
+  --md-sys-color-on-primary: rgb(255 255 255);
+  --md-sys-color-primary-container: rgb(205 237 163);
+  --md-sys-color-on-primary-container: rgb(53 78 22);
+  --md-sys-color-secondary: rgb(88 98 73);
+  --md-sys-color-on-secondary: rgb(255 255 255);
+  --md-sys-color-secondary-container: rgb(220 231 200);
+  --md-sys-color-on-secondary-container: rgb(64 74 51);
+  --md-sys-color-tertiary: rgb(56 102 99);
+  --md-sys-color-on-tertiary: rgb(255 255 255);
+  --md-sys-color-tertiary-container: rgb(188 236 231);
+  --md-sys-color-on-tertiary-container: rgb(31 78 75);
+  --md-sys-color-error: rgb(186 26 26);
+  --md-sys-color-on-error: rgb(255 255 255);
+  --md-sys-color-error-container: rgb(255 218 214);
+  --md-sys-color-on-error-container: rgb(147 0 10);
+  --md-sys-color-background: rgb(249 250 239);
+  --md-sys-color-on-background: rgb(26 28 22);
+  --md-sys-color-surface: rgb(249 250 239);
+  --md-sys-color-on-surface: rgb(26 28 22);
+  --md-sys-color-surface-variant: rgb(225 228 213);
+  --md-sys-color-on-surface-variant: rgb(68 72 61);
+  --md-sys-color-outline: rgb(117 121 108);
+  --md-sys-color-outline-variant: rgb(197 200 186);
+  --md-sys-color-shadow: rgb(0 0 0);
+  --md-sys-color-scrim: rgb(0 0 0);
+  --md-sys-color-inverse-surface: rgb(47 49 42);
+  --md-sys-color-inverse-on-surface: rgb(241 242 230);
+  --md-sys-color-inverse-primary: rgb(177 209 138);
+  --md-sys-color-primary-fixed: rgb(205 237 163);
+  --md-sys-color-on-primary-fixed: rgb(16 32 0);
+  --md-sys-color-primary-fixed-dim: rgb(177 209 138);
+  --md-sys-color-on-primary-fixed-variant: rgb(53 78 22);
+  --md-sys-color-secondary-fixed: rgb(220 231 200);
+  --md-sys-color-on-secondary-fixed: rgb(21 30 11);
+  --md-sys-color-secondary-fixed-dim: rgb(191 203 173);
+  --md-sys-color-on-secondary-fixed-variant: rgb(64 74 51);
+  --md-sys-color-tertiary-fixed: rgb(188 236 231);
+  --md-sys-color-on-tertiary-fixed: rgb(0 32 30);
+  --md-sys-color-tertiary-fixed-dim: rgb(160 208 203);
+  --md-sys-color-on-tertiary-fixed-variant: rgb(31 78 75);
+  --md-sys-color-surface-dim: rgb(218 219 208);
+  --md-sys-color-surface-bright: rgb(249 250 239);
+  --md-sys-color-surface-container-lowest: rgb(255 255 255);
+  --md-sys-color-surface-container-low: rgb(243 244 233);
+  --md-sys-color-surface-container: rgb(238 239 227);
+  --md-sys-color-surface-container-high: rgb(232 233 222);
+  --md-sys-color-surface-container-highest: rgb(226 227 216);
 }
 
 /* --- App Layout --- */
 .app-header {
-    background-color: var(--light-bg);
+    background-color: var(--md-sys-color-surface-container-low);
     padding: 0.8rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
     box-shadow: var(--box-shadow-sm);
     display: flex;
     align-items: center;
@@ -67,7 +117,7 @@ ul {
 }
 
 .app-header h1 {
-    color: var(--primary-color);
+    color: var(--md-sys-color-primary);
     font-size: 1.3rem;
     font-weight: 600;
     margin: 0;
@@ -111,19 +161,19 @@ ul {
     margin: 0 1rem 1rem 1rem;
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
-    background-color: var(--light-bg);
+    background-color: var(--md-sys-color-surface);
     min-height: 0;
 }
 
 .sidebar {
     width: 340px;
     flex-shrink: 0;
-    background-color: var(--medium-bg);
+    background-color: var(--md-sys-color-surface-container-low);
     padding: 1rem;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--md-sys-color-outline-variant);
     min-height: 0;
     /* Base styles for desktop */
     position: relative; /* Ensure it's part of the flow on desktop */
@@ -141,11 +191,11 @@ ul {
 .sidebar-section.suggested-features h2 {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--primary-color);
+    color: var(--md-sys-color-primary);
     margin-top: 0;
     margin-bottom: 0.8rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant); /* Also update border color here */
 }
 
 .sidebar-section.survey-management {
@@ -196,8 +246,8 @@ ul {
     width: 500px;
     max-width: calc(100% - 2rem);
     max-height: calc(100% - 2rem);
-    background-color: var(--light-bg);
-    border: 1px solid var(--border-color);
+    background-color: var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline);
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow-strong);
     z-index: 1050;
@@ -236,7 +286,7 @@ ul {
     font-weight: bold;
     line-height: 1;
     background-color: transparent;
-    color: var(--secondary-color);
+    color: var(--md-sys-color-secondary); /* Updated */
     border: 1px solid transparent;
     border-radius: 4px;
     cursor: pointer;
@@ -244,8 +294,8 @@ ul {
 }
 
 .btn-toggle-editor:hover {
-    background-color: #e9ecef;
-    border-color: var(--border-color);
+    background-color: var(--md-sys-color-surface-container-high); /* Updated */
+    border-color: var(--md-sys-color-outline-variant); /* Updated */
 }
 
 .active-lot-editor-container.editor-minimized {
@@ -284,8 +334,8 @@ ul {
 
 /* General styles for ANY survey-point-editor area */
 .survey-point-editor {
-    background-color: var(--dark-bg-editor);
-    color: var(--text-color-light);
+    background-color: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
     padding: 0.8rem;
     border-radius: var(--border-radius);
     display: flex;
@@ -306,7 +356,7 @@ ul {
     font-size: 0.85rem;
     font-weight: 500;
     margin-bottom: 0.25rem;
-    color: var(--text-color); /* Changed from #555 for consistency */
+    color: var(--md-sys-color-on-surface); /* Changed from #555 for consistency */
     display: block;
 }
 
@@ -316,18 +366,19 @@ input[type="text"].lot-name-input {
     width: 100%;
     height: 36px !important;
     font-size: 0.875rem;
-    border: 1px solid #cbd5e0;
+    border: 1px solid var(--md-sys-color-outline);
     border-radius: var(--border-radius);
     padding: 0.3rem 0.6rem;
-    background-color: #fff;
+    background-color: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
 select.crs-select:focus,
 input[type="text"].lot-name-input:focus {
-    border-color: var(--primary-color);
+    border-color: var(--md-sys-color-primary);
     outline: 0;
-    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    box-shadow: 0 0 0 0.2rem var(--md-sys-color-primary-container);
 }
 
 .select2-container--default .select2-selection--single {
@@ -345,7 +396,7 @@ input[type="text"].lot-name-input:focus {
 
 .global-settings small {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--md-sys-color-on-surface-variant); /* text-muted replacement */
     display: block;
     margin-top: 0.2rem;
 }
@@ -375,13 +426,13 @@ input[type="text"].lot-name-input:focus {
 }
 
 .lot-navigator li:hover {
-    background-color: #e7f0fa;
-    color: var(--primary-color);
+    background-color: var(--md-sys-color-primary-container); /* Adjusted to primary container */
+    color: var(--md-sys-color-on-primary-container); /* Adjusted to on primary container */
 }
 
 .lot-navigator li.active {
-    background-color: var(--primary-color);
-    color: white;
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
     font-weight: 500;
 }
 
@@ -405,7 +456,7 @@ input[type="text"].lot-name-input:focus {
 .lot-navigator .btn-remove-lot-list {
     background: none;
     border: none;
-    color: var(--danger-color);
+    color: var(--md-sys-color-error); /* Updated */
     cursor: pointer;
     font-size: 1rem;
     padding: 0 0.2rem;
@@ -440,61 +491,64 @@ input[type="text"].lot-name-input:focus {
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-color: var(--md-sys-color-primary);
 }
 
 .btn-primary:hover {
-    background-color: var(--primary-hover-color);
-    border-color: var(--primary-hover-color);
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-color: var(--md-sys-color-primary-container);
 }
 
 .btn-success {
-    background-color: var(--success-color);
-    color: white;
-    border-color: var(--success-color);
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-color: var(--md-sys-color-primary);
 }
 
 .btn-success:hover {
-    background-color: var(--success-hover-color);
-    border-color: var(--success-hover-color);
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-color: var(--md-sys-color-primary-container);
 }
 
 /* Added .btn-danger, .btn-warning, .btn-info for consistency and future use */
 .btn-danger {
-    background-color: var(--danger-color);
-    color: white;
-    border-color: var(--danger-color);
+    background-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+    border-color: var(--md-sys-color-error);
 }
 
 .btn-danger:hover {
-    background-color: var(--danger-hover-color);
-    border-color: var(--danger-hover-color);
+    background-color: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+    border-color: var(--md-sys-color-error-container);
 }
 
 .btn-warning {
-    background-color: var(--warning-color);
-    color: #212529; /* Dark text for yellow warning for better contrast */
-    border-color: var(--warning-color);
+    background-color: var(--md-sys-color-tertiary);
+    color: var(--md-sys-color-on-tertiary);
+    border-color: var(--md-sys-color-tertiary);
 }
 
 .btn-warning:hover {
-    background-color: var(--warning-hover-color);
-    border-color: var(--warning-hover-color);
-    color: #212529;
+    background-color: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    border-color: var(--md-sys-color-tertiary-container);
 }
 
 .btn-info {
-    background-color: var(--secondary-action-color);
-    color: var(--secondary-action-text-color);
-    border-color: var(--secondary-action-color);
+    background-color: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary);
+    border-color: var(--md-sys-color-secondary);
 }
 
 .btn-info:hover {
-    background-color: var(--secondary-action-hover-color);
-    border-color: var(--secondary-action-hover-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    border-color: var(--md-sys-color-secondary-container);
 }
 
 #addLotBtnSidebar {
@@ -516,11 +570,11 @@ input[type="text"].lot-name-input:focus {
 
 .survey-point-editor h3 {
     font-size: 0.9rem;
-    color: #e0e5ea;
+    color: var(--md-sys-color-on-surface-variant); /* Updated from #e0e5ea */
     padding-bottom: 0.5rem;
     margin-top: 0;
     margin-bottom: 0.8rem;
-    border-bottom: 1px solid #556270;
+    border-bottom: 1px solid var(--md-sys-color-outline); /* Updated from #556270 */
     width: 100%;
     flex-shrink: 0;
 }
@@ -530,7 +584,7 @@ input[type="text"].lot-name-input:focus {
 }
 
 .survey-point-editor .point-headers {
-    color: #a8b5c4;
+    color: var(--md-sys-color-on-surface-variant); /* Updated from #a8b5c4 */
     font-size: 0.75rem;
     padding-bottom: 0.4rem;
     margin-bottom: 0.6rem;
@@ -603,9 +657,9 @@ input[type="text"].lot-name-input:focus {
 .survey-point-editor .survey-point-row select {
     font-size: 0.8rem;
     padding: 0.35rem 0.3rem;
-    background-color: #4b5766;
-    border: 1px solid #5f6c7b;
-    color: var(--text-color-light);
+    background-color: var(--md-sys-color-surface-container-highest);
+    border: 1px solid var(--md-sys-color-outline);
+    color: var(--md-sys-color-on-surface-variant);
     border-radius: 4px;
     width: 100%;
     min-width: 0;
@@ -613,24 +667,24 @@ input[type="text"].lot-name-input:focus {
 
 .survey-point-editor .survey-point-row input:focus,
 .survey-point-editor .survey-point-row select:focus {
-    background-color: #525e6c;
-    border-color: var(--primary-color);
+    background-color: var(--md-sys-color-surface-dim);
+    border-color: var(--md-sys-color-primary);
     outline: none;
 }
 
 .survey-point-editor .btn-remove-point {
     padding: 0.2rem 0.5rem;
     font-size: 0.9rem;
-    background-color: var(--danger-color);
+    background-color: var(--md-sys-color-error);
     border-radius: 4px;
-    color: white;
+    color: var(--md-sys-color-on-error);
     border: none;
     line-height: 1;
     cursor: pointer;
 }
 
 .survey-point-editor .btn-remove-point:hover {
-    background-color: var(--danger-hover-color);
+    background-color: var(--md-sys-color-error-container);
 }
 
 .survey-point-editor .point-label {
@@ -641,14 +695,14 @@ input[type="text"].lot-name-input:focus {
 .export-buttons-section {
     margin-top: auto;
     padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 /* Styles for .export-buttons-section h3 */
 .export-buttons-section h3 {
     font-size: 1rem;
     font-weight: 500; /* Typical weight for h3 if h2 is 600 */
-    color: var(--primary-color);
+    color: var(--md-sys-color-primary);
     margin-top: 0;
     margin-bottom: 0.6rem;
     /* No border-bottom, to differentiate from h2 or per original design */
@@ -662,51 +716,51 @@ input[type="text"].lot-name-input:focus {
 }
 
 button#exportDxfBtn.btn-export {
-    background-color: var(--secondary-action-color);
-    border-color: var(--secondary-action-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary);
+    border-color: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary);
 }
 
 button#exportDxfBtn.btn-export:hover {
-    background-color: var(--secondary-action-hover-color);
-    border-color: var(--secondary-action-hover-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary-container);
+    border-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
 }
 
 button#exportGeoJsonBtn.btn-export {
-    background-color: var(--secondary-action-color);
-    border-color: var(--secondary-action-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary);
+    border-color: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary);
 }
 
 button#exportGeoJsonBtn.btn-export:hover {
-    background-color: var(--secondary-action-hover-color);
-    border-color: var(--secondary-action-hover-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary-container);
+    border-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
 }
 
 button#exportShapefileBtn.btn-export {
-    background-color: var(--secondary-action-color);
-    border-color: var(--secondary-action-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary);
+    border-color: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary);
 }
 
 button#exportShapefileBtn.btn-export:hover {
-    background-color: var(--secondary-action-hover-color);
-    border-color: var(--secondary-action-hover-color);
-    color: var(--secondary-action-text-color);
+    background-color: var(--md-sys-color-secondary-container);
+    border-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
 }
 
 button#exportKmzBtn.btn-export {
-    background-color: var(--warning-color);
-    border-color: var(--warning-color);
-    color: #212529; /* Ensure dark text for light warning color */
+    background-color: var(--md-sys-color-secondary); /* Already updated via .btn-info mapping */
+    border-color: var(--md-sys-color-secondary); /* Already updated via .btn-info mapping */
+    color: var(--md-sys-color-on-secondary);  /* Already updated via .btn-info mapping */
 }
 
 button#exportKmzBtn.btn-export:hover {
-    background-color: var(--warning-hover-color);
-    border-color: var(--warning-hover-color);
-    color: #212529; /* Ensure dark text for light warning color */
+    background-color: var(--md-sys-color-secondary-container); /* Already updated via .btn-info mapping */
+    border-color: var(--md-sys-color-secondary-container); /* Already updated via .btn-info mapping */
+    color: var(--md-sys-color-on-secondary-container); /* Already updated via .btn-info mapping */
 }
 
 /* --- Messages --- */
@@ -739,6 +793,9 @@ button#exportKmzBtn.btn-export:hover {
     border: 1px solid #c3e6cb;
 }
 
+#clearAllLotsBtn {
+    margin-top: 0.5rem;
+}
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 1100px) {
@@ -815,7 +872,7 @@ button#exportKmzBtn.btn-export:hover {
     display: block;
     width: 22px;
     height: 3px;
-    background-color: var(--primary-color);
+    background-color: var(--md-sys-color-primary);
     margin: 4px 0;
     transition: all 0.3s ease-in-out;
 }
@@ -892,12 +949,12 @@ button#exportKmzBtn.btn-export:hover {
         width: 280px; /* Adjust as needed */
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
-        background-color: var(--medium-bg); 
+        background-color: var(--md-sys-color-surface-container-low); 
         z-index: 1200; 
         overflow-y: auto;
         /* Resetting/overriding styles from @media (max-width: 1100px) */
         max-height: 100vh; /* Explicitly set for fixed sidebar */
-        border-right: 1px solid var(--border-color); /* Add back a border */
+        border-right: 1px solid var(--md-sys-color-outline-variant); /* Add back a border */
         border-bottom: none; /* Remove bottom border from 1100px rule */
         box-shadow: var(--box-shadow-strong); 
         display: flex; /* Ensure flex context is maintained */

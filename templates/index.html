@@ -65,6 +65,12 @@
 
                     <h3 class="settings-subsection-header">Map Display Options</h3>
                     <div class="input-group checkbox-group">
+                        <label for="toggleSurveyData">
+                            <input type="checkbox" id="toggleSurveyData" name="toggleSurveyData" checked>
+                            Show Survey Data Layers
+                        </label>
+                    </div>
+                    <div class="input-group checkbox-group">
                         <label for="toggleTieLines">
                             <input type="checkbox" id="toggleTieLines" name="toggleTieLines" checked>
                             Show Tie-Lines
@@ -86,7 +92,8 @@
                     <div class="input-group">
                         <label for="basemapSelect">Basemap:</label>
                         <select name="basemapSelect" id="basemapSelect" class="crs-select"> <!-- Re-use crs-select class for similar styling if appropriate -->
-                            <option value="esriImagery">Esri World Imagery (Default)</option>
+                            <option value="blank" selected>Blank Canvas</option>
+                            <option value="esriImagery">Esri World Imagery</option>
                             <option value="osmStandard">OpenStreetMap</option>
                             <option value="esriStreet">Esri World Street Map</option>
                         </select>

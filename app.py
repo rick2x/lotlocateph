@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import sys # Added for print to stderr
 import tempfile
 import zipfile
 
@@ -41,8 +42,28 @@ from utils import (
 SQM_TO_HECTARES = 0.0001
 
 app = Flask(__name__)
-# FIXME: Hardcoded secret key. In a production environment, this should be loaded from an environment variable or a secure configuration file.
-app.secret_key = 'your_very_secret_key_rizal_encoder_v13_csv_cache'  # TODO: Change in production
+
+# SECRET_KEY Handling
+fallback_secret_key = 'your_very_secret_key_rizal_encoder_v13_csv_cache'
+secret_key_from_env = os.environ.get('FLASK_SECRET_KEY')
+
+if secret_key_from_env:
+    app.secret_key = secret_key_from_env
+else:
+    app.secret_key = fallback_secret_key
+    warning_message = (
+        "WARNING: FLASK_SECRET_KEY environment variable not set. "
+        "Using a default, insecure key for development. "
+        "This is NOT SUITABLE for production."
+    )
+    # Attempt to use app.logger if available and configured, otherwise print to stderr
+    if hasattr(app, 'logger') and app.logger:
+        try:
+            app.logger.warning(warning_message)
+        except Exception: # Broad catch if logger is not ready
+            print(warning_message, file=sys.stderr)
+    else:
+        print(warning_message, file=sys.stderr)
 
 limiter = Limiter(
     get_remote_address,  # Key by remote IP address
@@ -53,11 +74,41 @@ limiter = Limiter(
 )
 
 # Application configuration
+# DEBUG Mode Handling
+debug_env_string = os.environ.get('FLASK_DEBUG')
+if debug_env_string is None:
+    calculated_debug_mode = False # Default to False if not set
+else:
+    calculated_debug_mode = debug_env_string.lower() == 'true'
+
+# CACHE_TYPE Handling
+cache_type_from_env = os.environ.get('FLASK_CACHE_TYPE')
+calculated_cache_type = cache_type_from_env if cache_type_from_env else "SimpleCache"
+
+# CACHE_DEFAULT_TIMEOUT Handling
+cache_timeout_from_env = os.environ.get('FLASK_CACHE_DEFAULT_TIMEOUT')
+calculated_cache_timeout = 3600  # Default timeout
+if cache_timeout_from_env:
+    try:
+        calculated_cache_timeout = int(cache_timeout_from_env)
+    except ValueError:
+        warning_message = (
+            f"WARNING: Invalid FLASK_CACHE_DEFAULT_TIMEOUT value '{cache_timeout_from_env}'. "
+            f"Must be an integer. Using default value: {calculated_cache_timeout} seconds."
+        )
+        # Attempt to use app.logger if available and configured, otherwise print to stderr
+        if hasattr(app, 'logger') and app.logger:
+            try:
+                app.logger.warning(warning_message)
+            except Exception: # Broad catch if logger is not ready
+                print(warning_message, file=sys.stderr)
+        else:
+            print(warning_message, file=sys.stderr)
+
 config = {
-    # FIXME: DEBUG mode should be False in production and ideally controlled by an environment variable.
-    "DEBUG": True,  # TODO: Set to False in production
-    "CACHE_TYPE": "SimpleCache",  # In-memory cache
-    "CACHE_DEFAULT_TIMEOUT": 3600  # 1 hour
+    "DEBUG": calculated_debug_mode,
+    "CACHE_TYPE": calculated_cache_type,
+    "CACHE_DEFAULT_TIMEOUT": calculated_cache_timeout
 }
 app.config.from_mapping(config)
 cache = Cache(app)
@@ -84,81 +135,121 @@ def load_reference_points():
             - str or None: An error message string if an error occurred,
                            otherwise None.
     """
-    # current_app is now imported at module level
     current_app.logger.info(
         f"Executing load_reference_points() from {RIZAL_CSV_PATH} "
         f"(cache miss or timeout)"
     )
+    
+    location_col = 'LOCATION'
+    point_col = 'POINT_OF_REFERENCE'
+    easting_col = 'EASTINGS'
+    northing_col = 'NORTHINGS'
+    required_csv_cols = {location_col, point_col, easting_col, northing_col}
+    
+    # Define dtypes for reading CSV, especially for coordinate columns to preserve them as strings initially
+    csv_dtypes = {
+        location_col: str,
+        point_col: str,
+        easting_col: str, 
+        northing_col: str
+    }
+
     try:
         if not os.path.exists(RIZAL_CSV_PATH):
             user_msg = (
-                f"Error: The reference points file "
-                f"('{os.path.basename(RIZAL_CSV_PATH)}') could not be found "
-                f"on the server. Please contact support."
+                f"Error: The reference points file ('{os.path.basename(RIZAL_CSV_PATH)}') "
+                f"could not be found on the server. Please contact support."
             )
-            current_app.logger.error(
-                f"Reference points file not found: {RIZAL_CSV_PATH}"
-            )
+            current_app.logger.error(f"Reference points file not found: {RIZAL_CSV_PATH}")
             return [], user_msg
         
-        df = pd.read_csv(RIZAL_CSV_PATH, encoding='utf-8-sig', on_bad_lines='warn')
+        df = pd.read_csv(
+            RIZAL_CSV_PATH, 
+            encoding='utf-8-sig', 
+            on_bad_lines='warn',
+            dtype=csv_dtypes # Use defined dtypes
+        )
         
-        location_col = 'LOCATION'
-        point_col = 'POINT_OF_REFERENCE'
-        easting_col = 'EASTINGS'
-        northing_col = 'NORTHINGS'
-        required_csv_cols = {location_col, point_col, easting_col, northing_col}
-
         if not required_csv_cols.issubset(df.columns):
             missing_cols_str = ', '.join(required_csv_cols - set(df.columns))
             user_msg = (
-                f"Error: The reference points file "
-                f"('{os.path.basename(RIZAL_CSV_PATH)}') is missing required "
-                f"columns: {missing_cols_str}. Please check the file format or "
-                f"contact support."
+                f"Error: The reference points file ('{os.path.basename(RIZAL_CSV_PATH)}') "
+                f"is missing required columns: {missing_cols_str}. "
+                f"Please check the file format or contact support."
             )
             current_app.logger.error(
-                f"CSV missing columns in '{os.path.basename(RIZAL_CSV_PATH)}': "
-                f"{missing_cols_str}"
+                f"CSV missing columns in '{os.path.basename(RIZAL_CSV_PATH)}': {missing_cols_str}"
             )
             return [], user_msg
 
+        # Select only required columns to minimize memory and processing
         df = df[list(required_csv_cols)].copy()
-        df.dropna(
-            subset=[location_col, point_col, easting_col, northing_col],
-            inplace=True
-        )
-        for col in [location_col, point_col, easting_col, northing_col]:
-            df[col] = df[col].astype(str).str.strip()
-            df = df[~df[col].isin(['', '#REF!'])] # Filter out specific invalid values
-            df = df[df[col].str.len() > 0] # Filter out empty strings after strip
-        
+
+        # Initial dropna based on essential string columns before stripping
+        # Convert to string and strip for all specified required columns first to handle mixed types robustly
+        for col in required_csv_cols:
+             df[col] = df[col].astype(str).str.strip()
+
+        # Now drop rows if any of the required columns became empty strings after stripping or were NaN initially
+        df.dropna(subset=list(required_csv_cols), inplace=True)
+        df = df[~df[location_col].isin(['', '#REF!'])]
+        df = df[~df[point_col].isin(['', '#REF!'])]
+        # Eastings and Northings will be validated for numeric content later
+
+        # Filter out empty strings again after specific value filtering, for all required columns
+        for col in required_csv_cols:
+            df = df[df[col].str.len() > 0]
+
         if df.empty:
-            return [], "Warning: No valid data rows in CSV after initial cleaning."
+            user_msg = (
+                f"Warning: No valid data rows found in the reference file "
+                f"('{os.path.basename(RIZAL_CSV_PATH)}') after initial cleaning. "
+                f"The file might be empty or all rows had missing essential values."
+            )
+            current_app.logger.warning(
+                f"No valid data rows in '{os.path.basename(RIZAL_CSV_PATH)}' "
+                f"after initial cleaning and filtering."
+            )
+            return [], user_msg
 
         # Clean and convert coordinate columns
-        for col_name in [easting_col, northing_col]:
-            df[col_name] = df[col_name].str.replace(',', '', regex=False)
-            df[col_name] = pd.to_numeric(df[col_name], errors='coerce')
+        # Remove commas and then convert to numeric, coercing errors
+        df[easting_col] = df[easting_col].str.replace(',', '', regex=False)
+        df[easting_col] = pd.to_numeric(df[easting_col], errors='coerce')
         
+        df[northing_col] = df[northing_col].str.replace(',', '', regex=False)
+        df[northing_col] = pd.to_numeric(df[northing_col], errors='coerce')
+        
+        # Drop rows where coordinate conversion failed (became NaT/NaN)
         df.dropna(subset=[easting_col, northing_col], inplace=True)
+        
         if df.empty:
-            return [], "Warning: No points with valid numeric coordinates found."
+            user_msg = (
+                f"Warning: No points with valid numeric coordinates found in "
+                f"('{os.path.basename(RIZAL_CSV_PATH)}') after attempting conversion. "
+                f"Please check the format of Eastings and Northings columns."
+            )
+            current_app.logger.warning(
+                f"No valid numeric coordinates in '{os.path.basename(RIZAL_CSV_PATH)}' "
+                f"after conversion attempt."
+            )
+            return [], user_msg
 
         df['display_name'] = df[location_col] + " - " + df[point_col]
         df.drop_duplicates(subset=['display_name'], keep='first', inplace=True)
         df.sort_values(by='display_name', inplace=True)
         
-        return df[['display_name', 'EASTINGS', 'NORTHINGS']].to_dict('records'), None
+        # Ensure EASTINGS and NORTHINGS are float in the final output, not string.
+        # They were converted to numeric by pd.to_numeric earlier.
+        return df[['display_name', easting_col, northing_col]].to_dict('records'), None
     
     except pd.errors.EmptyDataError:
         user_msg = (
-            f"Error: The reference points file "
-            f"('{os.path.basename(RIZAL_CSV_PATH)}') is empty. Please provide a "
-            f"file with data or contact support."
+            f"Error: The reference points file ('{os.path.basename(RIZAL_CSV_PATH)}') "
+            f"is empty or contains no data. Please provide a file with valid data or contact support."
         )
         current_app.logger.error(
-            f"Pandas EmptyDataError for '{os.path.basename(RIZAL_CSV_PATH)}'."
+            f"Pandas EmptyDataError for '{os.path.basename(RIZAL_CSV_PATH)}': File is empty."
         )
         return [], user_msg
     except Exception as e:
